@@ -107,6 +107,13 @@ app.use(express.static(
 ))
 
 /* =========================
+   ROTA RAIZ (TESTE)
+========================= */
+app.get("/", (req, res) => {
+  res.send("API MFS Cars rodando 🚀");
+});
+
+/* =========================
    ERROS
 ========================= */
 app.use((err, req, res, next) => {

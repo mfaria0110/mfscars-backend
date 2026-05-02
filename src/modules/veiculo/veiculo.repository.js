@@ -1,0 +1,1598 @@
+const db = require("../../shared/database/db");
+const { withTransaction } = require("../../shared/database/transaction");
+const fs = require("fs")
+const path = require("path")
+const UPLOAD_PATH = path.resolve(__dirname, "../../../uploads")
+
+exports.listar = async (filtros = {}) => {
+
+  if (!filtros.loja_id || Number.isNaN(Number(filtros.loja_id))) {
+    return {
+    page: 1,
+    limit: 12,
+    total: 0,
+    totalPages: 0,
+    data: []
+  };
+}
+
+  const page = parseInt(filtros.page) || 1;
+  const limit = parseInt(filtros.limit) || 12;
+  const offset = (page - 1) * limit;
+
+  const valores = [];
+
+  /* ===============================
+     WHERE BASE (🔥 REGRA CORRETA)
+  ============================== */
+
+let where = `WHERE 1=1`;
+
+/* ===============================
+   MULTI-TENANT
+============================== */
+
+if (filtros.empresa_id) {
+  valores.push(filtros.empresa_id);
+  where += ` AND v.empresa_id = $${valores.length}`;
+}
+
+if (filtros.loja_id) {
+  valores.push(filtros.loja_id);
+  where += ` AND v.loja_id = $${valores.length}`;
+}
+
+/* ===============================
+   STATUS (DISPONÍVEL + VENDIDOS 30 DIAS)
+============================== */
+
+if (filtros.empresa_id && filtros.loja_id) {
+
+  const empresaParam = 1; // já inserido antes
+  const lojaParam = 2;    // já inserido antes
+
+  where += `
+    AND (
+      v.status = 'disponivel'
+      OR v.id IN (
+        SELECT vd.veiculo_id
+        FROM venda vd
+        WHERE vd.status = 'FINALIZADA'
+        AND vd.data_venda >= CURRENT_DATE - INTERVAL '30 days'
+        AND vd.empresa_id = $${empresaParam}
+        AND vd.loja_id = $${lojaParam}
+      )
+    )
+  `;
+}
+
+
+/* ===============================
+   BUSCA TEXTO
+================================ */
+if (filtros.q) {
+  valores.push(filtros.q);
+  where += `
+    AND v.busca @@ plainto_tsquery('portuguese', $${valores.length})
+  `;
+}
+
+/* ===============================
+   TEXTO (ILIKE)
+================================ */
+
+if (filtros.marca) {
+  valores.push(`%${filtros.marca}%`)
+  where += ` AND v.marca ILIKE $${valores.length}`
+}
+
+if (filtros.modelo) {
+  valores.push(`%${filtros.modelo}%`);
+  where += ` AND v.modelo ILIKE $${valores.length}`;
+}
+
+/* 🔥 NOVO: COR */
+if (filtros.cor) {
+  valores.push(`%${filtros.cor}%`);
+  where += ` AND v.cor ILIKE $${valores.length}`;
+}
+
+/* 🔥 NOVO: PLACA INTELIGENTE */
+if (filtros.placa) {
+  valores.push(`%${filtros.placa.replace(/\W/g, '')}%`);
+  where += `
+    AND REPLACE(LOWER(v.placa), '-', '') 
+    LIKE LOWER($${valores.length})
+  `;
+}
+
+
+/* ===============================
+   ANO (VARCHAR ex: 2011/2012)
+================================ */
+
+if (filtros.anoMin) {
+  const anoMin = Number(filtros.anoMin)
+
+  if (!Number.isNaN(anoMin)) {
+    valores.push(anoMin)
+
+    where += `
+      AND CAST(
+        SPLIT_PART(v.ano_modelo, '/', 1)
+        AS INTEGER
+      ) >= $${valores.length}
+    `
+  }
+}
+
+if (filtros.anoMax) {
+  const anoMax = Number(filtros.anoMax)
+
+  if (!Number.isNaN(anoMax)) {
+    valores.push(anoMax)
+
+    where += `
+      AND CAST(
+        SPLIT_PART(v.ano_modelo, '/', 1)
+        AS INTEGER
+      ) <= $${valores.length}
+    `
+  }
+}
+
+
+/* ===============================
+   🔥 PREÇO
+================================ */
+
+if (filtros.precoMin) {
+  const precoMin = Number(filtros.precoMin)
+
+  if (!Number.isNaN(precoMin)) {
+    valores.push(precoMin)
+    where += ` AND v.valor::numeric >= $${valores.length}`
+  }
+}
+
+if (filtros.precoMax) {
+  const precoMax = Number(filtros.precoMax)
+
+  if (!Number.isNaN(precoMax)) {
+    valores.push(precoMax)
+    where += ` AND v.valor::numeric <= $${valores.length}`
+  }
+}
+
+if (filtros.km_max) {
+  valores.push(parseInt(filtros.km_max));
+  where += ` AND v.quilometragem <= $${valores.length}`;
+}
+
+/* ===============================
+   ENUM (IGUALDADE)
+================================ */
+
+if (filtros.combustivel) {
+  valores.push(filtros.combustivel);
+  where += ` AND v.combustivel = $${valores.length}`;
+}
+
+
+  /* ===============================
+     ORDENAÇÃO
+  ============================== */
+
+  const ordenacoes = {
+    recentes: "v.data_cadastro DESC",
+    preco_asc: "v.valor ASC",
+    preco_desc: "v.valor DESC",
+    ano_desc: "v.ano_modelo DESC",
+    ano_asc: "v.ano_modelo ASC",
+    km_asc: "v.quilometragem ASC",
+    km_desc: "v.quilometragem DESC"
+  };
+
+  const ordem = ordenacoes[filtros.sort] || "v.data_cadastro DESC";
+
+  /* ===============================
+     TOTAL
+  ============================== */
+
+  const totalQuery = `
+    SELECT COUNT(*)
+    FROM veiculo v
+    ${where}
+  `;
+
+  const totalResult = await db.query(totalQuery, valores);
+  const total = parseInt(totalResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
+
+  /* ===============================
+     QUERY PRINCIPAL
+  ============================== */
+
+  let query = `
+    SELECT 
+      v.*,
+      l.nome as loja,
+      l.cidade,
+      l.estado,
+      COALESCE(f.url, 'sem-foto.jpg') as foto
+    FROM veiculo v
+    JOIN loja l ON l.id = v.loja_id
+    LEFT JOIN LATERAL (
+      SELECT url
+      FROM veiculo_foto f
+      WHERE f.veiculo_id = v.id
+      ORDER BY f.principal DESC, f.id ASC
+      LIMIT 1
+    ) f ON true
+    ${where}
+    ORDER BY ${ordem}
+  `;
+
+  valores.push(limit);
+  valores.push(offset);
+
+  query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
+
+const r = await db.query(query, valores);
+
+const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads";
+
+const data = r.rows.map(v => {
+
+  let foto = v.foto || "sem-foto.jpg"
+
+  // 🔥 SE JÁ FOR URL COMPLETA → NÃO CONCATENA
+  if (foto.startsWith("http")) {
+    return { ...v, foto }
+  }
+
+  return {
+    ...v,
+    foto: `${BASE_URL}/${foto}`
+  }
+})
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    data
+  };
+
+};
+
+
+exports.marcas = async () => {
+
+  try {
+
+    const r = await db.query(`
+      SELECT id, nome
+      FROM marca
+      ORDER BY nome
+    `);
+
+    return r.rows;
+
+  } catch (e) {
+    console.error("ERRO SQL marcas:", e);
+    throw e;
+  }
+
+};
+
+
+exports.modelos = async (marcaId) => {
+
+  try {
+
+    // 🔒 garantir número
+    const id = parseInt(marcaId);
+
+    if (isNaN(id)) {
+      throw new Error("marca_id inválido");
+    }
+
+    const r = await db.query(`
+      SELECT id, nome
+      FROM modelo
+      WHERE marca_id = $1
+      ORDER BY nome
+    `, [id]);
+
+    return r.rows;
+
+  } catch (e) {
+    console.error("ERRO SQL modelos:", e);
+    throw e;
+  }
+
+};
+
+
+exports.opcionais = async ()=>{
+
+const r = await db.query(`
+SELECT id,nome
+FROM opcional
+ORDER BY nome
+`)
+
+return r.rows
+}
+
+exports.detalhes = async (id, empresaId, lojaId) => {
+
+  let query = `
+    SELECT
+      v.*,
+      l.nome AS loja,
+      l.telefone
+    FROM veiculo v
+    JOIN loja l ON l.id = v.loja_id
+    WHERE v.id = $1
+  `
+
+  const valores = [id]
+
+  /* 🔥 EMPRESA (SE NÃO FOR MASTER) */
+  if (empresaId !== null && empresaId !== undefined) {
+    valores.push(empresaId)
+    query += ` AND v.empresa_id = $${valores.length}`
+  }
+
+  /* 🔥 LOJA (SE EXISTIR) */
+  if (lojaId !== null && lojaId !== undefined) {
+    valores.push(lojaId)
+    query += ` AND v.loja_id = $${valores.length}`
+  }
+
+  const veiculo = await db.query(query, valores)
+
+  /* 🔥 NUNCA RETORNA NULL */
+  if (!veiculo.rows.length) {
+    return {
+      veiculo: null,
+      fotos: [],
+      opcionais: []
+    }
+  }
+
+  /* ===============================
+     FOTOS (SEM BLOQUEIO)
+  ============================== */
+
+const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads"
+
+  const fotos = await db.query(`
+    SELECT 
+      id,
+      veiculo_id,
+      empresa_id,
+      loja_id,
+      principal,
+      CASE 
+        WHEN url LIKE 'http%' THEN url
+        ELSE '${BASE_URL}/' || url
+      END as url
+    FROM veiculo_foto
+    WHERE veiculo_id = $1
+    ORDER BY principal DESC, id ASC
+  `, [id])
+
+  /* ===============================
+     OPCIONAIS
+  ============================== */
+
+  const opcionais = await db.query(`
+    SELECT
+      o.id,
+      o.nome
+    FROM veiculo_opcional vo
+    JOIN opcional o ON o.id = vo.opcional_id
+    WHERE vo.veiculo_id = $1
+  `, [id])
+
+  const proprietario = await db.query(
+  `
+  SELECT *
+  FROM veiculo_proprietario
+  WHERE veiculo_id = $1
+  LIMIT 1
+  `,
+  [id]
+)
+
+return {
+  veiculo: veiculo.rows[0],
+  fotos: fotos.rows,
+  opcionais: opcionais.rows,
+  proprietario:
+    proprietario.rows[0] || null
+}
+  
+}
+
+exports.veiculosEmpresa = async (
+  empresaId,
+  lojaId,
+  filtros = {}
+) => {
+
+  let query = `
+    SELECT
+      v.*,
+      (
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
+        ORDER BY principal DESC, id ASC
+        LIMIT 1
+      ) foto
+    FROM veiculo v
+    WHERE 1=1
+  `
+
+  const valores = []
+
+  /* 🔥 EMPRESA */
+ if (empresaId !== null && empresaId !== undefined) {
+  valores.push(empresaId)
+  query += ` AND v.empresa_id = $${valores.length}`
+}
+
+  /* 🔥 LOJA */
+  if (lojaId !== null && lojaId !== undefined) {
+    valores.push(lojaId)
+    query += ` AND v.loja_id = $${valores.length}`
+  }
+
+  /* ===============================
+     🔥 FILTROS
+  ============================== */
+
+  if (filtros.marca) {
+    valores.push(`%${filtros.marca}%`)
+    query += ` AND v.marca ILIKE $${valores.length}`
+  }
+
+  if (filtros.modelo) {
+    valores.push(`%${filtros.modelo}%`)
+    query += ` AND v.modelo ILIKE $${valores.length}`
+  }
+
+  if (filtros.cor) {
+    valores.push(`%${filtros.cor}%`)
+    query += ` AND v.cor ILIKE $${valores.length}`
+  }
+
+  if (filtros.placa) {
+    valores.push(`%${filtros.placa}%`)
+    query += ` AND v.placa ILIKE $${valores.length}`
+  }
+
+
+
+  /* 🔥 ANO */
+if (filtros.anoMin) {
+  const ano = parseInt(filtros.anoMin)
+
+  if (!isNaN(ano)) {
+    valores.push(ano)
+
+    query += `
+      AND CAST(
+        SPLIT_PART(v.ano_modelo, '/', 1)
+        AS INTEGER
+      ) >= $${valores.length}
+    `
+  }
+}
+
+
+
+  /* 🔥 PREÇO */
+  if (filtros.precoMax) {
+    const preco = parseFloat(filtros.precoMax)
+
+    if (!isNaN(preco)) {
+      valores.push(preco)
+      query += ` AND v.valor <= $${valores.length}`
+    }
+  }
+
+  query += ` ORDER BY v.data_cadastro DESC`
+
+  const r = await db.query(query, valores)
+
+  return r.rows
+}
+
+exports.criar = async (empresaId, lojaId, dados) => {
+
+  const resultado = await withTransaction(async (client) => {
+
+    /* ===============================
+       🔒 NORMALIZAÇÃO + VALIDAÇÃO
+    ============================== */
+
+    const marca = dados.marca?.trim();
+    const modelo = dados.modelo?.trim();
+    const versao = dados.versao?.trim() || null;
+    const cor = dados.cor?.trim() || null;
+    const combustivel = dados.combustivel || null;
+    const cambio = dados.cambio || null;
+    const carroceria = dados.carroceria || null;
+
+    const placa = dados.placa
+      ? dados.placa.replace(/\W/g, '').toUpperCase()
+      : null;
+
+    const renavam = dados.renavam || null;
+    const descricao = dados.descricao?.trim() || null;
+
+    const ano = dados.ano_modelo;
+    const quilometragem = dados.quilometragem;
+    const valor = dados.valor;
+
+    const aceita_troca = dados.aceita_troca;
+    const licenciado = dados.licenciado;
+
+    const opcionais = Array.isArray(dados.opcionais)
+      ? dados.opcionais
+      : [];
+
+    /* ===============================
+       🔒 VALIDAÇÃO
+    ============================== */
+
+    if (!marca) throw new Error("Marca é obrigatória");
+    if (!modelo) throw new Error("Modelo é obrigatório");
+    if (!valor || isNaN(parseFloat(valor))) throw new Error("Valor inválido");
+    if (
+        ano &&
+        !/^\d{4}(\/\d{4})?$/.test(String(ano))
+      ) {
+        throw new Error(
+          "Ano deve estar no formato 2011 ou 2011/2012"
+        )
+      }
+    if (quilometragem && isNaN(parseInt(quilometragem))) throw new Error("Quilometragem inválida");
+
+    /* ===============================
+       🔄 CONVERSÕES
+    ============================== */
+
+    const aceita_troca_bool = aceita_troca === true || aceita_troca === "true";
+    const licenciado_bool = licenciado === true || licenciado === "true";
+
+    const anoVal = ano ? String(ano).trim() : null;
+
+    const kmVal = quilometragem ? parseInt(quilometragem) : null;
+    const valorVal = valor ? parseFloat(valor) : null;
+
+    const placaFinalVal = placa
+      ? parseInt(placa.replace(/\D/g, '').slice(-1))
+      : null;
+
+    /* ===============================
+       🔒 LOCK + VALIDAR PLANO
+    ============================== */
+
+const planoRes = await client.query(`
+  SELECT lp.usados, p.limite_veiculos
+  FROM loja_plano lp
+  JOIN plano p ON p.id = lp.plano_id
+  WHERE lp.loja_id = $1
+  AND lp.status = 'ativo'
+  ORDER BY lp.data_inicio DESC
+  LIMIT 1
+  FOR UPDATE
+`, [lojaId]);
+
+    if (!planoRes.rows.length) {
+      throw new Error("Nenhum plano ativo encontrado");
+    }
+
+    const plano = planoRes.rows[0];
+
+    if (plano.usados >= plano.limite_veiculos) {
+      throw new Error("Limite do plano atingido. Faça upgrade.");
+    }
+
+    /* ===============================
+       🚗 INSERIR VEÍCULO
+    ============================== */
+
+    const r = await client.query(`
+      INSERT INTO veiculo (
+        empresa_id, loja_id, marca, modelo, versao,
+        ano_modelo, quilometragem, valor, combustivel, cambio,
+        carroceria, cor, placa, renavam, final_placa,
+        descricao, aceita_troca, licenciado, status
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,'disponivel'
+      )
+      RETURNING *
+    `, [
+      empresaId, lojaId, marca, modelo, versao,
+      anoVal, kmVal, valorVal, combustivel, cambio,
+      carroceria, cor, placa, renavam, placaFinalVal,
+      descricao, aceita_troca_bool, licenciado_bool
+    ]);
+
+    const veiculoId = r.rows[0].id;
+
+    /* ===============================
+   PROPRIETÁRIO
+============================== */
+
+if (
+  dados.proprietario_nome ||
+  dados.proprietario_cpf ||
+  dados.proprietario_telefone
+) {
+  await client.query(
+    `
+    INSERT INTO veiculo_proprietario (
+      veiculo_id,
+      nome,
+      cpf,
+      telefone,
+      email,
+      endereco,
+      cidade,
+      estado
+    )
+    VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8
+    )
+    `,
+    [
+      veiculoId,
+      dados.proprietario_nome || null,
+      dados.proprietario_cpf || null,
+      dados.proprietario_telefone || null,
+      dados.proprietario_email || null,
+      dados.proprietario_endereco || null,
+      dados.proprietario_cidade || null,
+      dados.proprietario_estado || null
+    ]
+  )
+}
+
+    /* ===============================
+       ⚙️ OPCIONAIS (BATCH)
+    ============================== */
+
+    if (opcionais.length) {
+      const valores = [];
+      const placeholders = [];
+
+      opcionais.forEach((op, index) => {
+        const pos = index * 2;
+        placeholders.push(`($${pos + 1}, $${pos + 2})`);
+        valores.push(veiculoId, parseInt(op));
+      });
+
+      await client.query(`
+        INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
+        VALUES ${placeholders.join(",")}
+      `, valores);
+    }
+
+    /* ===============================
+       📈 INCREMENTAR USO
+    ============================== */
+
+    await client.query(`
+      UPDATE loja_plano
+      SET usados = usados + 1
+      WHERE loja_id = $1
+      AND status = 'ativo'
+    `, [lojaId]);
+
+    /* ===============================
+       📜 LOG
+    ============================== */
+
+    await client.query(`
+      INSERT INTO plano_consumo_log (loja_id, veiculo_id, acao)
+      VALUES ($1, $2, 'CRIACAO_VEICULO')
+    `, [lojaId, veiculoId]);
+
+    return r.rows[0];
+  });
+
+  /* ===============================
+     ♻️ INVALIDAR CACHE
+  ============================== */
+
+  const dashboardCache = require("../dashboard/dashboard.repository");
+
+  if (dashboardCache.cache) {
+    dashboardCache.cache.delete(`${empresaId}_${lojaId}`);
+  }
+
+  return resultado;
+};
+
+
+exports.atualizar = async (id, empresaId, lojaId, dados) => {
+
+  return await withTransaction(async (client) => {
+
+    const marca = dados.marca || null
+    const modelo = dados.modelo || null
+    const versao = dados.versao || null
+    const ano_modelo = dados.ano_modelo || null
+    const quilometragem = dados.quilometragem || null
+    const valor = dados.valor || null
+    const combustivel = dados.combustivel || null
+    const cambio = dados.cambio || null
+    const carroceria = dados.carroceria || null
+    const cor = dados.cor || null
+    const placa = dados.placa || null
+    const renavam = dados.renavam || null
+    const descricao = dados.descricao || null
+    const aceita_troca = dados.aceita_troca
+    const licenciado = dados.licenciado
+
+    const placaFinal = placa
+      ? placa.replace(/\W/g, '').toUpperCase()
+      : null
+
+    const aceita_troca_bool =
+      aceita_troca === true || aceita_troca === "true"
+
+    const licenciado_bool =
+      licenciado === true || licenciado === "true"
+
+    const anoVal = ano_modelo
+  ? String(ano_modelo).trim()
+  : null
+    
+    const kmVal = parseInt(quilometragem) || null
+    const valorVal = Number(valor) || 0
+
+    let valores = [
+      marca,
+      modelo,
+      versao,
+      anoVal,
+      kmVal,
+      valorVal,
+      combustivel,
+      cambio,
+      carroceria,
+      cor,
+      placaFinal,
+      renavam,
+      descricao,
+      aceita_troca_bool,
+      licenciado_bool,
+      id
+    ]
+
+    let query = `
+      UPDATE veiculo SET
+        marca=$1,
+        modelo=$2,
+        versao=$3,
+        ano_modelo=$4,
+        quilometragem=$5,
+        valor=$6,
+        combustivel=$7,
+        cambio=$8,
+        carroceria=$9,
+        cor=$10,
+        placa=$11,
+        renavam=$12,
+        descricao=$13,
+        aceita_troca=$14,
+        licenciado=$15
+      WHERE id=$16
+    `
+
+    if (empresaId !== null && empresaId !== undefined) {
+      valores.push(empresaId)
+      query += ` AND empresa_id=$${valores.length}`
+    }
+
+    if (lojaId !== null && lojaId !== undefined){
+      valores.push(lojaId)
+      query += ` AND loja_id=$${valores.length}`
+    }
+
+    query += ` RETURNING *`
+
+    const r = await client.query(query, valores)
+
+    if (!r.rows.length) {
+      throw new Error("Veículo não encontrado ou sem permissão")
+    }
+
+    /* ===============================
+   ATUALIZA PROPRIETÁRIO
+============================== */
+
+/* remove antigo */
+await client.query(
+  `
+  DELETE FROM veiculo_proprietario
+  WHERE veiculo_id = $1
+  `,
+  [id]
+)
+
+/* insere novo */
+if (
+  dados.proprietario_nome ||
+  dados.proprietario_cpf ||
+  dados.proprietario_telefone
+) {
+  await client.query(
+    `
+    INSERT INTO veiculo_proprietario (
+      veiculo_id,
+      nome,
+      cpf,
+      telefone,
+      email,
+      endereco,
+      cidade,
+      estado
+    )
+    VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8
+    )
+    `,
+    [
+      id,
+      dados.proprietario_nome || null,
+      dados.proprietario_cpf || null,
+      dados.proprietario_telefone || null,
+      dados.proprietario_email || null,
+      dados.proprietario_endereco || null,
+      dados.proprietario_cidade || null,
+      dados.proprietario_estado || null
+    ]
+  )
+}
+
+    /* 🔥 OPCIONAIS */
+    if (dados.opcionais) {
+
+      await client.query(
+        `DELETE FROM veiculo_opcional WHERE veiculo_id=$1`,
+        [id]
+      )
+
+      if (dados.opcionais.length) {
+
+        const valores = []
+        const placeholders = []
+
+        dados.opcionais.forEach((op, index) => {
+          const pos = index * 2
+          placeholders.push(`($${pos + 1}, $${pos + 2})`)
+          valores.push(id, parseInt(op))
+        })
+
+        await client.query(`
+          INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
+          VALUES ${placeholders.join(",")}
+        `, valores)
+      }
+    }
+
+    return r.rows[0]
+  })
+}
+
+exports.excluir = async (id, empresaId, lojaId) => {
+
+  return await withTransaction(async (client) => {
+
+    /* ==========================
+       VALIDAR VEÍCULO
+    ========================== */
+    const veiculo = await client.query(
+      `
+      SELECT id
+      FROM veiculo
+      WHERE id = $1
+      AND empresa_id = $2
+      AND loja_id = $3
+      `,
+      [id, empresaId, lojaId]
+    )
+
+    if (!veiculo.rows.length) {
+      throw new Error("Veículo não encontrado")
+    }
+
+    /* ==========================
+       BUSCAR FOTOS
+    ========================== */
+    const midias = await client.query(
+      `
+      SELECT url
+      FROM veiculo_foto
+      WHERE veiculo_id = $1
+      `,
+      [id]
+    )
+
+    /* ==========================
+       REMOVER ARQUIVOS DAS FOTOS
+    ========================== */
+    for (const midia of midias.rows) {
+      try {
+        if (!midia.url) continue
+
+        const nomeArquivo = path.basename(midia.url)
+        const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
+
+        if (fs.existsSync(caminhoArquivo)) {
+          await fs.promises.unlink(caminhoArquivo)
+          }
+
+      } catch (err) {
+        console.error("Erro ao remover foto:", err)
+      }
+    }
+
+    /* ==========================
+       BUSCAR DOCUMENTOS
+    ========================== */
+    const docs = await client.query(
+      `
+      SELECT arquivo
+      FROM veiculo_documento
+      WHERE veiculo_id = $1
+      `,
+      [id]
+    )
+
+    /* ==========================
+       REMOVER ARQUIVOS DOS DOCUMENTOS
+    ========================== */
+    for (const doc of docs.rows) {
+      try {
+        if (!doc.arquivo) continue
+
+        const nomeArquivo = path.basename(doc.arquivo)
+
+        const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
+
+        if (fs.existsSync(caminhoArquivo)) {
+          await fs.promises.unlink(caminhoArquivo)
+        }
+
+      } catch (err) {
+        console.error("Erro ao remover documento:", err)
+      }
+    }
+
+    /* ==========================
+       DELETE TABELAS FILHAS
+    ========================== */
+
+    await client.query(
+      `DELETE FROM veiculo_foto WHERE veiculo_id = $1`,
+      [id]
+    )
+
+    await client.query(
+      `DELETE FROM veiculo_opcional WHERE veiculo_id = $1`,
+      [id]
+    )
+
+    await client.query(
+      `DELETE FROM veiculo_documento WHERE veiculo_id = $1`,
+      [id]
+    )
+
+    await client.query(
+      `DELETE FROM veiculo_proprietario WHERE veiculo_id = $1`,
+      [id]
+    )
+
+    /* ==========================
+       DELETE VEÍCULO
+    ========================== */
+    await client.query(
+      `
+      DELETE FROM veiculo
+      WHERE id = $1
+      AND empresa_id = $2
+      AND loja_id = $3
+      `,
+       [id, empresaId, lojaId]
+    )
+
+    /* ==========================
+       RETORNO
+    ========================== */
+    return {
+      sucesso: true,
+      mensagem: "Veículo excluído com sucesso"
+    }
+
+  })
+}
+
+
+exports.verificarDono = async (veiculoId)=>{
+
+const r = await db.query(
+`SELECT empresa_id, loja_id
+FROM veiculo
+WHERE id=$1`,
+[veiculoId]
+)
+
+return r.rows[0]
+
+}
+
+exports.salvarFoto = async (
+  empresaId,
+  lojaId,
+  veiculoId,
+  url
+) => {
+  return await withTransaction(async (client) => {
+
+    const veiculo = await client.query(
+      `
+      SELECT id, empresa_id, loja_id
+      FROM veiculo
+      WHERE id = $1
+      AND empresa_id = $2
+      AND loja_id = $3
+      `,
+      [
+        veiculoId,
+        empresaId,
+        lojaId
+      ]
+    )
+
+    if (!veiculo.rows.length) {
+      throw new Error(
+        "Veículo não encontrado"
+      )
+    }
+
+    const totalFotos =
+      await client.query(
+        `
+        SELECT COUNT(*)
+        FROM veiculo_foto
+        WHERE veiculo_id = $1
+        `,
+        [veiculoId]
+      )
+
+    const isPrimeira =
+      Number(
+        totalFotos.rows[0].count
+      ) === 0
+
+    const r =
+      await client.query(
+        `
+        INSERT INTO veiculo_foto (
+          veiculo_id,
+          empresa_id,
+          loja_id,
+          url,
+          principal
+        )
+        VALUES ($1,$2,$3,$4,$5)
+        RETURNING *
+        `,
+        [
+          veiculoId,
+          empresaId,
+          lojaId,
+          url,
+          isPrimeira
+        ]
+      )
+
+    return r.rows[0]
+  })
+}
+
+
+exports.removerFoto = async (id) => {
+
+  return await withTransaction(async (client) => {
+
+    const foto = await client.query(
+      `SELECT veiculo_id, principal FROM veiculo_foto WHERE id=$1`,
+      [id]
+    )
+
+    if (!foto.rows.length) return
+
+    const { veiculo_id, principal } = foto.rows[0]
+
+    await client.query(`DELETE FROM veiculo_foto WHERE id=$1`, [id])
+
+    if (principal) {
+
+      const outra = await client.query(
+        `SELECT id FROM veiculo_foto WHERE veiculo_id=$1 LIMIT 1`,
+        [veiculo_id]
+      )
+
+      if (outra.rows.length) {
+        await client.query(
+          `UPDATE veiculo_foto SET principal=true WHERE id=$1`,
+          [outra.rows[0].id]
+        )
+      }
+    }
+  })
+}
+
+exports.definirPrincipal = async (id) => {
+
+  return await withTransaction(async (client) => {
+
+    const foto = await client.query(
+      `SELECT veiculo_id FROM veiculo_foto WHERE id=$1`,
+      [id]
+    )
+
+    if (!foto.rows.length) {
+      throw new Error("Foto não encontrada")
+    }
+
+    const veiculoId = foto.rows[0].veiculo_id
+
+    await client.query(
+      `UPDATE veiculo_foto SET principal=false WHERE veiculo_id=$1`,
+      [veiculoId]
+    )
+
+    await client.query(
+      `UPDATE veiculo_foto SET principal=true WHERE id=$1`,
+      [id]
+    )
+  })
+}
+
+/* ============================= */
+/*      MARKETPLACE PUBLICO      */
+/* ============================= */
+
+exports.buscarPublico = async (filtros = {}) => {
+
+  const page = parseInt(filtros.page) || 1
+  const limit = 12
+  const offset = (page - 1) * limit
+
+  let where = `WHERE v.status='disponivel'`
+  const valores = []
+
+  /* FILTROS */
+
+  if(filtros.marca){
+    valores.push(`%${filtros.marca}%`)
+    where += ` AND v.marca ILIKE $${valores.length}`
+  }
+
+  if(filtros.modelo){
+    valores.push(`%${filtros.modelo}%`)
+    where += ` AND v.modelo ILIKE $${valores.length}`
+  }
+
+  if(filtros.cidade){
+    valores.push(`%${filtros.cidade}%`)
+    where += ` AND l.cidade ILIKE $${valores.length}`
+  }
+
+  if(filtros.preco){
+    valores.push(parseFloat(filtros.preco))
+    where += ` AND v.valor <= $${valores.length}`
+  }
+
+  /* TOTAL */
+
+  const totalQuery = `
+    SELECT COUNT(*)
+    FROM veiculo v
+    JOIN loja l ON l.id = v.loja_id
+    ${where}
+  `
+
+  const totalResult = await db.query(totalQuery, valores)
+  const total = parseInt(totalResult.rows[0].count)
+  const totalPages = Math.ceil(total / limit)
+
+  /* QUERY PRINCIPAL */
+
+  let query = `
+    SELECT
+      v.id,
+      v.loja_id,
+      v.marca,
+      v.modelo,
+      v.ano_modelo,
+      v.valor,
+
+      COALESCE((
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id=v.id
+        AND loja_id = v.loja_id
+        ORDER BY principal DESC
+        LIMIT 1
+      ), 'sem-foto.jpg') foto,
+
+      l.nome AS loja,
+      l.cidade,
+      l.estado
+
+    FROM veiculo v
+    JOIN loja l ON l.id = v.loja_id
+
+    ${where}
+
+    ORDER BY v.data_cadastro DESC
+    LIMIT $${valores.length + 1}
+    OFFSET $${valores.length + 2}
+  `
+
+  valores.push(limit, offset)
+
+  const r = await db.query(query, valores)
+
+  return {
+    page,
+    totalPages,
+    total,
+    data: r.rows
+  }
+}
+
+exports.buscarPublicoPorId = async (id)=>{
+
+const r = await db.query(`
+SELECT
+v.*,
+l.nome as loja,
+l.cidade,
+l.estado,
+(
+SELECT url
+FROM veiculo_foto
+WHERE veiculo_id = v.id
+ORDER BY principal DESC
+LIMIT 1
+) foto
+FROM veiculo v
+JOIN loja l ON l.id = v.loja_id
+WHERE v.id=$1
+`,[id])
+
+const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads"
+
+const v = r.rows[0]
+
+if(!v) return null
+
+return {
+  ...v,
+  foto: v.foto
+    ? `${BASE_URL}/${v.foto}`
+    : `${BASE_URL}/sem-foto.jpg`
+}
+
+}
+
+////FIM ////
+exports.filtros = async ()=>{
+
+/* marcas */
+
+const marcas = await db.query(`
+SELECT marca, COUNT(*) as total
+FROM veiculo
+WHERE status='disponivel'
+GROUP BY marca
+ORDER BY marca
+`)
+
+
+/* combustivel */
+
+const combustiveis = await db.query(`
+SELECT combustivel, COUNT(*) as total
+FROM veiculo
+WHERE status='disponivel'
+GROUP BY combustivel
+ORDER BY combustivel
+`)
+
+
+/* anos */
+
+const anos = await db.query(`
+SELECT ano_modelo, COUNT(*) as total
+FROM veiculo
+WHERE status='disponivel'
+GROUP BY ano_modelo
+ORDER BY ano_modelo DESC
+`)
+
+
+return {
+
+marcas: marcas.rows,
+combustiveis: combustiveis.rows,
+anos: anos.rows
+
+}
+
+}
+
+exports.similares = async (id) => {
+
+  const base = await db.query(
+    `SELECT marca, modelo, valor
+     FROM veiculo
+     WHERE id = $1`,
+    [id]
+  )
+
+  if (!base.rows.length) return []
+
+  const { marca, modelo, valor } = base.rows[0]
+
+  const r = await db.query(
+    `
+    SELECT
+      v.id,
+      v.marca,
+      v.modelo,
+      v.valor,
+      (
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
+        ORDER BY principal DESC
+        LIMIT 1
+      ) foto
+    FROM veiculo v
+    WHERE v.id != $1
+      AND v.marca = $2
+      AND v.valor BETWEEN $3 * 0.7 AND $3 * 1.3
+    ORDER BY v.data_cadastro DESC
+    LIMIT 8
+    `,
+    [id, marca, valor]
+  )
+
+  return r.rows
+}
+
+exports.toggleFavorito = async (usuarioId, veiculoId) => {
+
+  const existe = await db.query(
+    `SELECT id FROM favorito
+     WHERE usuario_id=$1 AND veiculo_id=$2`,
+    [usuarioId, veiculoId]
+  )
+
+  if (existe.rows.length > 0) {
+
+    await db.query(
+      `DELETE FROM favorito
+       WHERE usuario_id=$1 AND veiculo_id=$2`,
+      [usuarioId, veiculoId]
+    )
+
+    return { favoritado: false }
+
+  } else {
+
+    await db.query(
+      `INSERT INTO favorito (usuario_id, veiculo_id)
+       VALUES ($1,$2)`,
+      [usuarioId, veiculoId]
+    )
+
+    return { favoritado: true }
+
+  }
+
+}
+
+exports.listarFavoritos = async (usuarioId) => {
+
+  const r = await db.query(`
+    SELECT
+      v.*,
+      (
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
+        ORDER BY principal DESC
+        LIMIT 1
+      ) foto
+    FROM favorito f
+    JOIN veiculo v ON v.id = f.veiculo_id
+    WHERE f.usuario_id=$1
+    ORDER BY f.created_at DESC
+  `, [usuarioId])
+
+  return r.rows
+}
+
+exports.listarPublico = async (filtros = {}) => {
+
+  const params = [];
+
+  let where = `WHERE v.status = 'disponivel'`;
+
+  /* 🔍 FILTROS */
+
+  if (filtros.marca) {
+    params.push(`%${filtros.marca}%`);
+    where += ` AND v.marca ILIKE $${params.length}`;
+  }
+
+  if (filtros.modelo) {
+    params.push(`%${filtros.modelo}%`);
+    where += ` AND v.modelo ILIKE $${params.length}`;
+  }
+
+  if (filtros.preco) {
+    params.push(Number(filtros.preco));
+    where += ` AND v.valor <= $${params.length}`;
+  }
+
+  if (filtros.cidade) {
+    params.push(`%${filtros.cidade}%`);
+    where += ` AND l.cidade ILIKE $${params.length}`;
+  }
+
+  /* 🔢 PAGINAÇÃO */
+
+  const page = Number(filtros.page) || 1;
+  const limit = 12;
+  const offset = (page - 1) * limit;
+
+  let query = `
+    SELECT 
+      v.id,
+      v.marca,
+      v.modelo,
+      v.ano_modelo as ano,
+      v.valor,
+      l.cidade,
+      l.estado,
+      l.nome as loja,
+      v.loja_id,
+      (
+        SELECT url 
+        FROM veiculo_foto 
+        WHERE veiculo_id = v.id 
+        LIMIT 1
+      ) as foto
+    FROM veiculo v
+    LEFT JOIN loja l ON l.id = v.loja_id
+    ${where}
+  `;
+
+  params.push(limit);
+  query += ` LIMIT $${params.length}`;
+
+  params.push(offset);
+  query += ` OFFSET $${params.length}`;
+
+  const result = await db.query(query, params);
+
+  /* 🔢 TOTAL (AGORA CORRETO) */
+
+  const totalResult = await db.query(`
+    SELECT COUNT(*)
+    FROM veiculo v
+    LEFT JOIN loja l ON l.id = v.loja_id
+    ${where}
+  `, params.slice(0, -2));
+
+  const total = Number(totalResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: result.rows,
+    page,
+    totalPages
+  };
+};
+
+
+exports.excluirDocumento = async (id) => {
+  try {
+    const r = await db.query(
+      `
+      DELETE FROM veiculo_documento
+      WHERE id = $1
+      RETURNING *
+      `,
+      [id]
+    )
+
+    if (!r.rows.length) {
+      throw new Error(
+        "Documento não encontrado"
+      )
+    }
+
+    return true
+
+  } catch (e) {
+    console.error(
+      "ERRO REPOSITORY excluirDocumento:",
+      e
+    )
+    throw e
+  }
+}
+
+exports.fotos = async (veiculoId, empresaId, lojaId) => {
+
+  let query = `
+    SELECT 
+      id,
+      veiculo_id,
+      empresa_id,
+      loja_id,
+      url,
+      principal
+    FROM veiculo_foto
+    WHERE veiculo_id = $1
+  `
+
+  const params = [veiculoId]
+
+  if (empresaId !== null && empresaId !== undefined) {
+    params.push(empresaId)
+    query += ` AND empresa_id = $${params.length}`
+  }
+
+  if (lojaId !== null && lojaId !== undefined) {
+    params.push(lojaId)
+    query += ` AND loja_id = $${params.length}`
+  }
+
+  query += ` ORDER BY principal DESC, id ASC`
+
+  const r = await db.query(query, params)
+
+  return r.rows
+}
+
+exports.contarFotos = async (veiculoId) => {
+  const result = await db.query(
+    `SELECT COUNT(*) FROM veiculo_foto WHERE veiculo_id = $1`,
+    [veiculoId]
+  )
+
+  return Number(result.rows[0].count)
+}

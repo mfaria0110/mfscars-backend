@@ -1,17 +1,23 @@
 const { Pool } = require('pg')
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'mfs_cars_db',
-  password: 'postgres123',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
 
-  /* 🔥 CONTROLE DE CONEXÕES (ESSENCIAL) */
-  max: 20, // máximo de conexões simultâneas
-  idleTimeoutMillis: 30000, // fecha conexões ociosas
+  max: 20,
+  idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000
-})
+});
+
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ ERRO CONEXÃO BANCO:', err);
+  } else {
+    console.log('✅ BANCO CONECTADO:', res.rows[0]);
+  }
+});
 
 /* 🔥 LOG OPCIONAL (AJUDA MUITO DEBUG) */
 pool.on('connect', () => {

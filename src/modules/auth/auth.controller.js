@@ -26,8 +26,7 @@ exports.login = async (req, res) => {
       return res.status(403).json({ erro: "Usuário inativo" });
     }
 
-    const senhaValida = senha === user.senha;
-
+    const senhaValida = await bcrypt.compare(senha, user.senha);
     if (!senhaValida) {
       return res.status(401).json({ erro: "Senha inválida" });
     }

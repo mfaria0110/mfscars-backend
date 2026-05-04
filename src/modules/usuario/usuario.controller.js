@@ -51,19 +51,19 @@ exports.criar = async (req, res) => {
 exports.listar = async (req, res) => {
   try {
 
-    const empresaId =
-      isMaster(req.user)
-        ? null
-        : req.user.empresa_id
+    const master = isMaster(req.user)
 
-    // 🔥 SEMPRE USA LOJA DO HEADER
-    const lojaId = req.loja_id
+    const empresaId = master
+      ? null
+      : req.user.empresa_id
 
-    console.log("🔥 CONTROLLER LISTAR loja:", lojaId)
+    console.log("🔥 LISTAR → master:", master)
+    console.log("🔥 LISTAR → empresaId:", empresaId)
 
- const data = await service.listar({
-  lojaId
-})
+    const data = await service.listar({
+      empresaId,
+      isMaster: master
+    })
 
     res.json(data)
 

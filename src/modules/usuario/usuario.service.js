@@ -135,24 +135,40 @@ exports.criar = async (empresaId, dados) => {
 /* ===============================
    LISTAR
 ================================ */
-exports.listar = async ({ lojaId }) => {
-
-  console.log("🔥 FILTRO USUARIO lojaId:", lojaId)
-
-  if (!lojaId) {
-    throw new Error("Loja obrigatória")
-  }
+exports.listar = async ({ empresaId, isMaster }) => {
 
   try {
-    const result = await db.query(`
-      SELECT u.*
+
+    let query = `
+      SELECT
+        u.id,
+        u.nome,
+        u.email,
+        u.tipo,
+        u.ativo,
+        u.empresa_id
       FROM usuario u
-      INNER JOIN usuario_loja ul
-        ON ul.usuario_id = u.id
-      WHERE ul.loja_id = $1
-      AND ul.ativo = true
+    `
+
+    const params = []
+
+    // 🔥 se NÃO for master → filtra por empresa
+    if (!isMaster) {
+      params.push(empresaId)
+
+      query += `
+        WHERE u.empresa_id = $${params.length}
+      `
+    }
+
+    query += `
       ORDER BY u.nome
-    `, [lojaId])
+    `
+
+    console.log("🔥 SQL:", query)
+    console.log("🔥 PARAMS:", params)
+
+    const result = await db.query(query, params)
 
     console.log("🔥 RESULTADO:", result.rows.length)
 
@@ -490,45 +506,38 @@ exports.detalhes = async (
   empresaId,
   lojaId
 ) => {
-  let query = `
-    SELECT u.*
-    FROM usuario u
-    WHERE u.id = $1
-  `
-
   const params = [id]
+
+  let where = `WHERE u.id = $1`
 
   if (empresaId) {
     params.push(empresaId)
-
-    query += `
-      AND u.empresa_id = $${params.length}
-    `
+    where += ` AND u.empresa_id = $${params.length}`
   }
 
-  if (lojaId) {
-    params.push(lojaId)
+  const query = `
+    SELECT 
+      u.*,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'loja_id', ul.loja_id,
+            'perfil', ul.perfil
+          )
+        ) FILTER (WHERE ul.loja_id IS NOT NULL),
+        '[]'
+      ) AS lojas
+    FROM usuario u
+    LEFT JOIN usuario_loja ul
+      ON ul.usuario_id = u.id
+    ${where}
+    GROUP BY u.id
+  `
 
-    query += `
-      AND EXISTS (
-        SELECT 1
-        FROM usuario_loja ul
-        WHERE ul.usuario_id = u.id
-        AND ul.loja_id = $${params.length}
-      )
-    `
-  }
-
-  const result =
-    await db.query(
-      query,
-      params
-    )
+  const result = await db.query(query, params)
 
   if (!result.rows.length) {
-    throw new Error(
-      "Usuário não encontrado"
-    )
+    throw new Error("Usuário não encontrado")
   }
 
   return result.rows[0]

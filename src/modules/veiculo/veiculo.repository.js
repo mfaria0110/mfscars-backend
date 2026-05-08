@@ -248,16 +248,19 @@ const data = r.rows.map(v => {
 
   let foto = v.foto || "sem-foto.jpg"
 
-  // 🔥 SE JÁ FOR URL COMPLETA → NÃO CONCATENA
+  // 🔥 SE JÁ FOR URL COMPLETA
   if (foto.startsWith("http")) {
-    return { ...v, foto }
+    return {
+      ...v,
+      foto
+    }
   }
 
   return {
     ...v,
-    foto.startsWith("http")
-  ? foto
-  : `${BASE_URL}/uploads/${foto}`
+
+    foto:
+      `${BASE_URL}/uploads/${foto}`
   }
 })
 

@@ -95,8 +95,12 @@ router.post(
           })
       }
 
-      const arquivo =
-        req.file.filename
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+const arquivo =
+  `${BASE_URL}/uploads/${req.file.filename}`
 
       const result =
         await db.query(

@@ -2,6 +2,9 @@ const repo = require("./veiculo.repository")
 const sharp = require("sharp")
 const fs = require("fs")
 const path = require("path")
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
 
 /* ===============================
    VEICULOS
@@ -85,9 +88,9 @@ exports.uploadFoto = async (
 
   const totalFotos = await repo.contarFotos(veiculoId)
 
-  if (totalFotos + files.length > 6) {
+  if (totalFotos + files.length > 10) {
     throw new Error(
-      `Limite máximo de 6 fotos. Já possui ${totalFotos}`
+      `Limite máximo de 10 fotos. Já possui ${totalFotos}`
     )
   }
 
@@ -110,51 +113,84 @@ exports.uploadFoto = async (
 
     fs.unlinkSync(inputPath)
 
-    await repo.salvarFoto(
-      empresaId,
-      lojaId,
-      veiculoId,
-      file800
-    )
+await repo.salvarFoto(
+  empresaId,
+  lojaId,
+  veiculoId,
+  `${BASE_URL}/uploads/${file800}`
+)
+    
   }
 }
 
 /* ===============================
    REMOVER FOTO
 ================================ */
+exports.removerFoto = async (
+  fotoId,
+  empresaId,
+  lojaId
+) => {
 
-exports.removerFoto = async (fotoId, empresaId, lojaId) => {
-
-  const foto = await repo.buscarFotoPorId(fotoId)
+  const foto =
+    await repo.buscarFotoPorId(
+      fotoId
+    )
 
   if (!foto) {
-    throw new Error("Foto não encontrada")
+    throw new Error(
+      "Foto não encontrada"
+    )
   }
 
   if (
     Number(foto.empresa_id) !== Number(empresaId) ||
     Number(foto.loja_id) !== Number(lojaId)
   ) {
-    throw new Error("Sem permissão")
+    throw new Error(
+      "Sem permissão"
+    )
   }
 
-  const caminho = "uploads/" + foto.url
+  const nomeArquivo =
+    path.basename(
+      foto.url
+    )
 
-  if (fs.existsSync(caminho)) {
+  const caminho =
+    path.join(
+      process.cwd(),
+      "uploads",
+      nomeArquivo
+    )
+
+  console.log(
+    "REMOVENDO FOTO:",
+    caminho
+  )
+
+  if (
+    fs.existsSync(caminho)
+  ) {
     fs.unlinkSync(caminho)
   }
 
-  await repo.removerFoto(fotoId)
+  await repo.removerFoto(
+    fotoId
+  )
 
   if (foto.principal) {
-    await repo.definirOutraPrincipal(foto.veiculo_id)
+
+    await repo.definirOutraPrincipal(
+      foto.veiculo_id
+    )
   }
 }
+
 
 /* ===============================
    FOTO PRINCIPAL
 ================================ */
-
 exports.definirFotoPrincipal = async (
   fotoId,
   empresaId,

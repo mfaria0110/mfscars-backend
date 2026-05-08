@@ -240,7 +240,9 @@ if (filtros.combustivel) {
 
 const r = await db.query(query, valores);
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads";
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
 
 const data = r.rows.map(v => {
 
@@ -253,7 +255,9 @@ const data = r.rows.map(v => {
 
   return {
     ...v,
-    foto: `${BASE_URL}/${foto}`
+    foto.startsWith("http")
+  ? foto
+  : `${BASE_URL}/uploads/${foto}`
   }
 })
 
@@ -368,7 +372,9 @@ exports.detalhes = async (id, empresaId, lojaId) => {
      FOTOS (SEM BLOQUEIO)
   ============================== */
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads"
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
 
   const fotos = await db.query(`
     SELECT 
@@ -1121,30 +1127,105 @@ exports.removerFoto = async (id) => {
   return await withTransaction(async (client) => {
 
     const foto = await client.query(
-      `SELECT veiculo_id, principal FROM veiculo_foto WHERE id=$1`,
+      `
+      SELECT
+        id,
+        veiculo_id,
+        principal,
+        url
+      FROM veiculo_foto
+      WHERE id = $1
+      `,
       [id]
     )
 
-    if (!foto.rows.length) return
+    if (!foto.rows.length) {
+      throw new Error("Foto não encontrada")
+    }
 
-    const { veiculo_id, principal } = foto.rows[0]
+    const {
+      veiculo_id,
+      principal,
+      url
+    } = foto.rows[0]
 
-    await client.query(`DELETE FROM veiculo_foto WHERE id=$1`, [id])
+    /* =========================
+       REMOVE ARQUIVO FÍSICO
+    ========================= */
+
+    try {
+
+      if (url) {
+
+        const nomeArquivo =
+          path.basename(url)
+
+        const caminhoArquivo =
+          path.join(
+            UPLOAD_PATH,
+            nomeArquivo
+          )
+
+        if (
+          fs.existsSync(caminhoArquivo)
+        ) {
+          await fs.promises.unlink(
+            caminhoArquivo
+          )
+        }
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Erro ao remover arquivo:",
+        err
+      )
+    }
+
+    /* =========================
+       REMOVE BANCO
+    ========================= */
+
+    await client.query(
+      `
+      DELETE FROM veiculo_foto
+      WHERE id = $1
+      `,
+      [id]
+    )
+
+    /* =========================
+       REDEFINE PRINCIPAL
+    ========================= */
 
     if (principal) {
 
-      const outra = await client.query(
-        `SELECT id FROM veiculo_foto WHERE veiculo_id=$1 LIMIT 1`,
-        [veiculo_id]
-      )
+      const outra =
+        await client.query(
+          `
+          SELECT id
+          FROM veiculo_foto
+          WHERE veiculo_id = $1
+          LIMIT 1
+          `,
+          [veiculo_id]
+        )
 
       if (outra.rows.length) {
+
         await client.query(
-          `UPDATE veiculo_foto SET principal=true WHERE id=$1`,
+          `
+          UPDATE veiculo_foto
+          SET principal = true
+          WHERE id = $1
+          `,
           [outra.rows[0].id]
         )
       }
     }
+
+    return true
   })
 }
 
@@ -1289,7 +1370,9 @@ JOIN loja l ON l.id = v.loja_id
 WHERE v.id=$1
 `,[id])
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001/uploads"
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
 
 const v = r.rows[0]
 
@@ -1595,4 +1678,4 @@ exports.contarFotos = async (veiculoId) => {
   )
 
   return Number(result.rows[0].count)
-}
+} 

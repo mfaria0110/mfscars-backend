@@ -1345,12 +1345,35 @@ exports.buscarPublico = async (filtros = {}) => {
 
   const r = await db.query(query, valores)
 
-  return {
-    page,
-    totalPages,
-    total,
-    data: r.rows
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+const data = r.rows.map(v => {
+
+  let foto = v.foto || "sem-foto.jpg"
+
+  if (foto.startsWith("http")) {
+    return {
+      ...v,
+      foto
+    }
   }
+
+  return {
+    ...v,
+    foto: `${BASE_URL}/uploads/${foto}`
+  }
+})
+
+return {
+  page,
+  totalPages,
+  total,
+  data
+}
+
+  
 }
 
 exports.buscarPublicoPorId = async (id)=>{
@@ -1605,11 +1628,34 @@ exports.listarPublico = async (filtros = {}) => {
   const total = Number(totalResult.rows[0].count);
   const totalPages = Math.ceil(total / limit);
 
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+const data = result.rows.map(v => {
+
+  let foto = v.foto || "sem-foto.jpg"
+
+  if (foto.startsWith("http")) {
+    return {
+      ...v,
+      foto
+    }
+  }
+
   return {
-    data: result.rows,
-    page,
-    totalPages
-  };
+    ...v,
+    foto: `${BASE_URL}/uploads/${foto}`
+  }
+})
+
+return {
+  data,
+  page,
+  totalPages
+}
+
+
 };
 
 

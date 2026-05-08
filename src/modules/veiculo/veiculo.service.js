@@ -132,58 +132,97 @@ exports.removerFoto = async (
   lojaId
 ) => {
 
-  const foto =
-    await repo.buscarFotoPorId(
+  try {
+
+    console.log(
+      "🔥 REMOVER FOTO:",
       fotoId
     )
 
-  if (!foto) {
-    throw new Error(
-      "Foto não encontrada"
-    )
-  }
+    const foto =
+      await repo.buscarFotoPorId(
+        fotoId
+      )
 
-  if (
-    Number(foto.empresa_id) !== Number(empresaId) ||
-    Number(foto.loja_id) !== Number(lojaId)
-  ) {
-    throw new Error(
-      "Sem permissão"
-    )
-  }
-
-  const nomeArquivo =
-    path.basename(
-      foto.url
+    console.log(
+      "📸 FOTO:",
+      foto
     )
 
-  const caminho =
-    path.join(
-      process.cwd(),
-      "uploads",
-      nomeArquivo
+    if (!foto) {
+      throw new Error(
+        "Foto não encontrada"
+      )
+    }
+
+    if (
+      Number(foto.empresa_id) !== Number(empresaId) ||
+      Number(foto.loja_id) !== Number(lojaId)
+    ) {
+      throw new Error(
+        "Sem permissão"
+      )
+    }
+
+    const nomeArquivo =
+      path.basename(
+        foto.url
+      )
+
+    const caminho =
+      path.join(
+        process.cwd(),
+        "uploads",
+        nomeArquivo
+      )
+
+    console.log(
+      "🗂 CAMINHO:",
+      caminho
     )
 
-  console.log(
-    "REMOVENDO FOTO:",
-    caminho
-  )
+    if (
+      fs.existsSync(caminho)
+    ) {
 
-  if (
-    fs.existsSync(caminho)
-  ) {
-    fs.unlinkSync(caminho)
-  }
+      console.log(
+        "🧹 EXCLUINDO ARQUIVO"
+      )
 
-  await repo.removerFoto(
-    fotoId
-  )
+      fs.unlinkSync(caminho)
+    }
 
-  if (foto.principal) {
-
-    await repo.definirOutraPrincipal(
-      foto.veiculo_id
+    console.log(
+      "🗑 REMOVENDO BANCO"
     )
+
+    await repo.removerFoto(
+      fotoId
+    )
+
+    if (foto.principal) {
+
+      console.log(
+        "⭐ DEFININDO NOVA PRINCIPAL"
+      )
+
+      await repo.definirOutraPrincipal(
+        foto.veiculo_id
+      )
+    }
+
+    console.log(
+      "✅ FOTO REMOVIDA"
+    )
+
+  } catch (e) {
+
+    console.error(
+      "🔥 ERRO REMOVER FOTO:",
+      e
+    )
+
+    throw e
   }
 }
 

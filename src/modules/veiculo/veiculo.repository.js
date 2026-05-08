@@ -1679,3 +1679,49 @@ exports.contarFotos = async (veiculoId) => {
 
   return Number(result.rows[0].count)
 } 
+
+exports.buscarFotoPorId = async (id) => {
+
+  const result = await query(
+
+    `
+    SELECT *
+    FROM veiculo_foto
+    WHERE id = $1
+    `,
+    
+    [id]
+  )
+
+  return result.rows[0]
+}
+
+exports.definirOutraPrincipal = async (
+  veiculoId
+) => {
+
+  const result = await query(
+
+    `
+    SELECT id
+    FROM veiculo_foto
+    WHERE veiculo_id = $1
+    LIMIT 1
+    `,
+
+    [veiculoId]
+  )
+
+  if (!result.rows.length) return
+
+  await query(
+
+    `
+    UPDATE veiculo_foto
+    SET principal = true
+    WHERE id = $1
+    `,
+
+    [result.rows[0].id]
+  )
+}

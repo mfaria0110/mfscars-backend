@@ -1682,7 +1682,7 @@ exports.contarFotos = async (veiculoId) => {
 
 exports.buscarFotoPorId = async (id) => {
 
-  const result = await query(
+  const result = await db.query(
 
     `
     SELECT *
@@ -1696,11 +1696,12 @@ exports.buscarFotoPorId = async (id) => {
   return result.rows[0]
 }
 
+
 exports.definirOutraPrincipal = async (
   veiculoId
 ) => {
 
-  const result = await query(
+  const result = await db.query(
 
     `
     SELECT id
@@ -1714,7 +1715,7 @@ exports.definirOutraPrincipal = async (
 
   if (!result.rows.length) return
 
-  await query(
+  await db.query(
 
     `
     UPDATE veiculo_foto

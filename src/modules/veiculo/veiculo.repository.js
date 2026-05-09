@@ -1434,9 +1434,14 @@ if(!v) return null
 
 return {
   ...v,
-  foto: v.foto
-    ? `${BASE_URL}/${v.foto}`
-    : `${BASE_URL}/sem-foto.jpg`
+
+  foto: !v.foto
+    ? `${BASE_URL}/uploads/sem-foto.jpg`
+
+    : v.foto.startsWith("http")
+      ? v.foto
+
+      : `${BASE_URL}/uploads/${v.foto}`
 }
 
 }
@@ -1745,7 +1750,20 @@ exports.fotos = async (veiculoId, empresaId, lojaId) => {
 
   const r = await db.query(query, params)
 
-  return r.rows
+  const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+return r.rows.map(f => ({
+
+  ...f,
+
+  url:
+    f.url?.startsWith("http")
+      ? f.url
+      : `${BASE_URL}/uploads/${f.url}`
+}))
+  
 }
 
 exports.contarFotos = async (veiculoId) => {

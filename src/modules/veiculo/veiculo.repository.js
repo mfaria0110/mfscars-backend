@@ -437,13 +437,13 @@ exports.veiculosEmpresa = async (
   let query = `
     SELECT
       v.*,
-      (
+       COALESCE((
         SELECT url
         FROM veiculo_foto
         WHERE veiculo_id = v.id
         ORDER BY principal DESC, id ASC
         LIMIT 1
-      ) foto
+      ), 'sem-foto.jpg') foto
     FROM veiculo v
     WHERE 1=1
   `
@@ -518,10 +518,38 @@ if (filtros.anoMin) {
 
   query += ` ORDER BY v.data_cadastro DESC`
 
-  const r = await db.query(query, valores)
+ const r = await db.query(query, valores)
 
-  return r.rows
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+const data = r.rows.map(v => {
+
+  let foto = v.foto || "sem-foto.jpg"
+
+  if (
+    foto &&
+    foto.startsWith("http")
+  ) {
+    return {
+      ...v,
+      foto
+    }
+  }
+
+  return {
+    ...v,
+    foto:
+      `${BASE_URL}/uploads/${foto}`
+  }
+})
+
+return data
+
 }
+
+
 
 exports.criar = async (empresaId, lojaId, dados) => {
 
@@ -1373,7 +1401,7 @@ return {
   data
 }
 
-  
+
 }
 
 exports.buscarPublicoPorId = async (id)=>{

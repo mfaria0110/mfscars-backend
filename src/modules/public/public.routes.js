@@ -115,14 +115,18 @@ router.get("/loja/:id", async (req, res) => {
       ORDER BY v.valor DESC
     `, [id]);
 
-    const BASE_URL = "http://localhost:3001/uploads";
 
-    const veiculos = veiculosRes.rows.map(v => ({
-      ...v,
-      foto: v.foto
-        ? `${BASE_URL}/${v.foto}`
-        : `${BASE_URL}/sem-foto.jpg`
-    }));
+const veiculos = veiculosRes.rows.map(v => ({
+  ...v,
+  foto:
+    v.foto &&
+    v.foto.startsWith("http")
+      ? v.foto
+      : v.foto
+        ? `https://mfscars-backend.onrender.com/uploads/${v.foto}`
+        : `https://mfscars-backend.onrender.com/uploads/sem-foto.jpg`
+}));
+
 
     res.json({ loja, veiculos });
 
@@ -219,14 +223,16 @@ router.get("/veiculos/similares/:id", async (req, res) => {
       LIMIT 6
     `, [id]);
 
-    const BASE_URL = "http://localhost:3001/uploads";
-
-    const data = r.rows.map(v => ({
-      ...v,
-      foto: v.foto
-        ? `${BASE_URL}/${v.foto}`
-        : `${BASE_URL}/sem-foto.jpg`
-    }));
+const data = r.rows.map(v => ({
+  ...v,
+  foto:
+    v.foto &&
+    v.foto.startsWith("http")
+      ? v.foto
+      : v.foto
+        ? `https://mfscars-backend.onrender.com/uploads/${v.foto}`
+        : `https://mfscars-backend.onrender.com/uploads/sem-foto.jpg`
+}));
 
     res.json(data);
 

@@ -175,16 +175,13 @@ exports.uploadFoto = async (
     )
 
     const result =
-      await cloudinary
-        .uploader
-        .upload(
-          file.path,
-          {
-            folder: "mfscars",
-            resource_type:
-              "image"
-          }
-        )
+      await cloudinary.uploader.upload(
+        file.path,
+        {
+          folder: "mfscars",
+          resource_type: "auto"
+        }
+      )
 
     console.log(
       "✅ CLOUDINARY URL:",

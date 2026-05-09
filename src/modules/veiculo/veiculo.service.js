@@ -117,7 +117,7 @@ await repo.salvarFoto(
   empresaId,
   lojaId,
   veiculoId,
-  `${BASE_URL}/uploads/${file800}`
+  file800
 )
     
   }

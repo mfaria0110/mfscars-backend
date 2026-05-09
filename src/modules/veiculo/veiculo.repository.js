@@ -4,6 +4,32 @@ const fs = require("fs")
 const path = require("path")
 const UPLOAD_PATH = path.resolve(__dirname, "../../../uploads")
 
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://mfscars-backend.onrender.com"
+
+function normalizarFoto(foto) {
+
+  foto =
+    String(foto || "")
+      .trim()
+
+  if (!foto) {
+
+    return `${BASE_URL}/uploads/sem-foto.jpg`
+  }
+
+  if (
+    foto.includes("http://") ||
+    foto.includes("https://")
+  ) {
+
+    return foto
+  }
+
+  return `${BASE_URL}/uploads/${foto}`
+}
+
 exports.listar = async (filtros = {}) => {
 
   if (!filtros.loja_id || Number.isNaN(Number(filtros.loja_id))) {
@@ -22,15 +48,7 @@ exports.listar = async (filtros = {}) => {
 
   const valores = [];
 
-  /* ===============================
-     WHERE BASE (🔥 REGRA CORRETA)
-  ============================== */
-
   let where = `WHERE 1=1`;
-
-/* ===============================
-   MULTI-TENANT
-============================== */
 
   if (filtros.empresa_id) {
     valores.push(filtros.empresa_id);
@@ -42,237 +60,59 @@ exports.listar = async (filtros = {}) => {
     where += ` AND v.loja_id = $${valores.length}`;
   }
 
-/* ===============================
-   STATUS (DISPONÍVEL + VENDIDOS 30 DIAS)
-============================== */
-
-  if (filtros.empresa_id && filtros.loja_id) {
-
-  const empresaParam = 1; // já inserido antes
-  const lojaParam = 2;    // já inserido antes
-
-  where += `
-    AND (
-      v.status = 'disponivel'
-      OR v.id IN (
-        SELECT vd.veiculo_id
-        FROM venda vd
-        WHERE vd.status = 'FINALIZADA'
-        AND vd.data_venda >= CURRENT_DATE - INTERVAL '30 days'
-        AND vd.empresa_id = $${empresaParam}
-        AND vd.loja_id = $${lojaParam}
-      )
-    )
-  `;
-}
-
-
-/* ===============================
-   BUSCA TEXTO
-================================ */
-if (filtros.q) {
-  valores.push(filtros.q);
-  where += `
-    AND v.busca @@ plainto_tsquery('portuguese', $${valores.length})
-  `;
-}
-
-/* ===============================
-   TEXTO (ILIKE)
-================================ */
-
-if (filtros.marca) {
-  valores.push(`%${filtros.marca}%`)
-  where += ` AND v.marca ILIKE $${valores.length}`
-}
-
-if (filtros.modelo) {
-  valores.push(`%${filtros.modelo}%`);
-  where += ` AND v.modelo ILIKE $${valores.length}`;
-}
-
-/* 🔥 NOVO: COR */
-if (filtros.cor) {
-  valores.push(`%${filtros.cor}%`);
-  where += ` AND v.cor ILIKE $${valores.length}`;
-}
-
-/* 🔥 VEICULO NOVO: PLACA INTELIGENTE */
-if (filtros.placa) {
-  valores.push(`%${filtros.placa.replace(/\W/g, '')}%`);
-  where += `
-    AND REPLACE(LOWER(v.placa), '-', '') 
-    LIKE LOWER($${valores.length})
-  `;
-}
-
-
-/* ===============================
-   ANO (VARCHAR ex: 2011/2012)
-================================ */
-
-if (filtros.anoMin) {
-  const anoMin = Number(filtros.anoMin)
-
-  if (!Number.isNaN(anoMin)) {
-    valores.push(anoMin)
-
-    where += `
-      AND CAST(
-        SPLIT_PART(v.ano_modelo, '/', 1)
-        AS INTEGER
-      ) >= $${valores.length}
-    `
-  }
-}
-
-if (filtros.anoMax) {
-  const anoMax = Number(filtros.anoMax)
-
-  if (!Number.isNaN(anoMax)) {
-    valores.push(anoMax)
-
-    where += `
-      AND CAST(
-        SPLIT_PART(v.ano_modelo, '/', 1)
-        AS INTEGER
-      ) <= $${valores.length}
-    `
-  }
-}
-
-
-/* ===============================
-   🔥 PREÇO
-================================ */
-
-if (filtros.precoMin) {
-  const precoMin = Number(filtros.precoMin)
-
-  if (!Number.isNaN(precoMin)) {
-    valores.push(precoMin)
-    where += ` AND v.valor::numeric >= $${valores.length}`
-  }
-}
-
-if (filtros.precoMax) {
-  const precoMax = Number(filtros.precoMax)
-
-  if (!Number.isNaN(precoMax)) {
-    valores.push(precoMax)
-    where += ` AND v.valor::numeric <= $${valores.length}`
-  }
-}
-
-if (filtros.km_max) {
-  valores.push(parseInt(filtros.km_max));
-  where += ` AND v.quilometragem <= $${valores.length}`;
-}
-
-/* ===============================
-   ENUM (IGUALDADE)
-================================ */
-
-if (filtros.combustivel) {
-  valores.push(filtros.combustivel);
-  where += ` AND v.combustivel = $${valores.length}`;
-}
-
-
-  /* ===============================
-     ORDENAÇÃO
-  ============================== */
-
-const ordenacoes = {
-  recentes: "v.data_cadastro DESC",
-  preco_asc: "v.valor ASC",
-  preco_desc: "v.valor DESC",
-  ano_desc: "v.ano_modelo DESC",
-  ano_asc: "v.ano_modelo ASC",
-  km_asc: "v.quilometragem ASC",
-  km_desc: "v.quilometragem DESC"
-};
-
-const ordem = ordenacoes[filtros.sort] || "v.data_cadastro DESC";
-
-  /* ===============================
-     TOTAL
-  ============================== */
-
-const totalQuery = `
+  const totalQuery = `
     SELECT COUNT(*)
     FROM veiculo v
     ${where}
-`;
+  `;
 
-const totalResult = await db.query(totalQuery, valores);
-const total = parseInt(totalResult.rows[0].count);
-const totalPages = Math.ceil(total / limit);
+  const totalResult = await db.query(totalQuery, valores);
+  const total = parseInt(totalResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
 
-  /* ===============================
-     QUERY PRINCIPAL
-  ============================== */
-
-let query = `
+  let query = `
     SELECT 
       v.*,
       l.nome as loja,
       l.cidade,
       l.estado,
-      COALESCE(f.url, 'sem-foto.jpg') as foto
+
+      COALESCE((
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
+        ORDER BY principal DESC, id ASC
+        LIMIT 1
+      ), 'sem-foto.jpg') foto
+
     FROM veiculo v
     JOIN loja l ON l.id = v.loja_id
-    LEFT JOIN LATERAL (
-      SELECT url
-      FROM veiculo_foto f
-      WHERE f.veiculo_id = v.id
-      ORDER BY f.principal DESC, f.id ASC
-      LIMIT 1
-    ) f ON true
+
     ${where}
-    ORDER BY ${ordem}
-`;
 
-valores.push(limit);
-valores.push(offset);
+    ORDER BY v.data_cadastro DESC
+  `;
 
-query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
+  valores.push(limit);
+  valores.push(offset);
 
-const r = await db.query(query, valores);
+  query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
 
-const BASE_URL =
-process.env.BASE_URL ||
-"https://mfscars-backend.onrender.com"
+  const r = await db.query(query, valores);
 
-const data = r.rows.map(v => {
-
-  let foto = v.foto || "sem-foto.jpg"
-
-  // 🔥 SE JÁ FOR URL COMPLETA
-  if (foto.startsWith("http")) {
-    return {
-      ...v,
-      foto
-    }
-  }
+  const data = r.rows.map(v => ({
+    ...v,
+    foto: normalizarFoto(v.foto)
+  }));
 
   return {
-    ...v,
-
-    foto:
-    `${BASE_URL}/uploads/${foto}`
-  }
-})
-
-return {
-  page,
-  limit,
-  total,
-  totalPages,
-  data
-};
-
-};
+    page,
+    limit,
+    total,
+    totalPages,
+    data
+  };
+}
 
 
 exports.marcas = async () => {
@@ -428,125 +268,88 @@ exports.detalhes = async (id, empresaId, lojaId) => {
   
 }
 
-exports.veiculosEmpresa = async (
-  empresaId,
-  lojaId,
-  filtros = {}
-  ) => {
+exports.listar = async (filtros = {}) => {
+
+  if (!filtros.loja_id || Number.isNaN(Number(filtros.loja_id))) {
+    return {
+      page: 1,
+      limit: 12,
+      total: 0,
+      totalPages: 0,
+      data: []
+    };
+  }
+
+  const page = parseInt(filtros.page) || 1;
+  const limit = parseInt(filtros.limit) || 12;
+  const offset = (page - 1) * limit;
+
+  const valores = [];
+
+  let where = `WHERE 1=1`;
+
+  if (filtros.empresa_id) {
+    valores.push(filtros.empresa_id);
+    where += ` AND v.empresa_id = $${valores.length}`;
+  }
+
+  if (filtros.loja_id) {
+    valores.push(filtros.loja_id);
+    where += ` AND v.loja_id = $${valores.length}`;
+  }
+
+  const totalQuery = `
+    SELECT COUNT(*)
+    FROM veiculo v
+    ${where}
+  `;
+
+  const totalResult = await db.query(totalQuery, valores);
+  const total = parseInt(totalResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
 
   let query = `
-    SELECT
+    SELECT 
       v.*,
-       COALESCE((
+      l.nome as loja,
+      l.cidade,
+      l.estado,
+
+      COALESCE((
         SELECT url
         FROM veiculo_foto
         WHERE veiculo_id = v.id
         ORDER BY principal DESC, id ASC
         LIMIT 1
       ), 'sem-foto.jpg') foto
+
     FROM veiculo v
-    WHERE 1=1
-  `
+    JOIN loja l ON l.id = v.loja_id
 
-  const valores = []
+    ${where}
 
-  /* 🔥 EMPRESA */
-  if (empresaId !== null && empresaId !== undefined) {
-    valores.push(empresaId)
-    query += ` AND v.empresa_id = $${valores.length}`
-  }
+    ORDER BY v.data_cadastro DESC
+  `;
 
-  /* 🔥 LOJA */
-  if (lojaId !== null && lojaId !== undefined) {
-    valores.push(lojaId)
-    query += ` AND v.loja_id = $${valores.length}`
-  }
+  valores.push(limit);
+  valores.push(offset);
 
-  /* ===============================
-     🔥 FILTROS
-  ============================== */
+  query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
 
-  if (filtros.marca) {
-    valores.push(`%${filtros.marca}%`)
-    query += ` AND v.marca ILIKE $${valores.length}`
-  }
+  const r = await db.query(query, valores);
 
-  if (filtros.modelo) {
-    valores.push(`%${filtros.modelo}%`)
-    query += ` AND v.modelo ILIKE $${valores.length}`
-  }
+  const data = r.rows.map(v => ({
+    ...v,
+    foto: normalizarFoto(v.foto)
+  }));
 
-  if (filtros.cor) {
-    valores.push(`%${filtros.cor}%`)
-    query += ` AND v.cor ILIKE $${valores.length}`
-  }
-
-  if (filtros.placa) {
-    valores.push(`%${filtros.placa}%`)
-    query += ` AND v.placa ILIKE $${valores.length}`
-  }
-
-
-
-  /* 🔥 ANO */
-  if (filtros.anoMin) {
-    const ano = parseInt(filtros.anoMin)
-
-    if (!isNaN(ano)) {
-      valores.push(ano)
-
-      query += `
-      AND CAST(
-        SPLIT_PART(v.ano_modelo, '/', 1)
-        AS INTEGER
-      ) >= $${valores.length}
-      `
-    }
-  }
-
-
-
-  /* 🔥 PREÇO */
-  if (filtros.precoMax) {
-    const preco = parseFloat(filtros.precoMax)
-
-    if (!isNaN(preco)) {
-      valores.push(preco)
-      query += ` AND v.valor <= $${valores.length}`
-    }
-  }
-
-  query += ` ORDER BY v.data_cadastro DESC`
-
-  const r = await db.query(query, valores)
-
-  const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
-
-  const data = r.rows.map(v => {
-
-    let foto = v.foto || "sem-foto.jpg"
-
-    if (
-      foto &&
-      foto.startsWith("http")
-      ) {
-      return {
-        ...v,
-        foto
-      }
-    }
-
-    return {
-      ...v,
-      foto:
-      `${BASE_URL}/uploads/${foto}`
-    }
-  })
-
-  return data
-
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    data
+  };
 }
 
 
@@ -1290,52 +1093,14 @@ exports.definirPrincipal = async (id) => {
 /* ============================= */
 /*      MARKETPLACE PUBLICO      */
 /* ============================= */
-
 exports.buscarPublico = async (filtros = {}) => {
 
-  const page = parseInt(filtros.page) || 1
-  const limit = 12
-  const offset = (page - 1) * limit
+  const page = parseInt(filtros.page) || 1;
+  const limit = 12;
+  const offset = (page - 1) * limit;
 
-  let where = `WHERE v.status='disponivel'`
-  const valores = []
-
-  /* FILTROS */
-
-  if(filtros.marca){
-    valores.push(`%${filtros.marca}%`)
-    where += ` AND v.marca ILIKE $${valores.length}`
-  }
-
-  if(filtros.modelo){
-    valores.push(`%${filtros.modelo}%`)
-    where += ` AND v.modelo ILIKE $${valores.length}`
-  }
-
-  if(filtros.cidade){
-    valores.push(`%${filtros.cidade}%`)
-    where += ` AND l.cidade ILIKE $${valores.length}`
-  }
-
-  if(filtros.preco){
-    valores.push(parseFloat(filtros.preco))
-    where += ` AND v.valor <= $${valores.length}`
-  }
-
-  /* TOTAL */
-
-  const totalQuery = `
-    SELECT COUNT(*)
-    FROM veiculo v
-    JOIN loja l ON l.id = v.loja_id
-    ${where}
-  `
-
-  const totalResult = await db.query(totalQuery, valores)
-  const total = parseInt(totalResult.rows[0].count)
-  const totalPages = Math.ceil(total / limit)
-
-  /* QUERY PRINCIPAL */
+  let where = `WHERE v.status='disponivel'`;
+  const valores = [];
 
   let query = `
     SELECT
@@ -1350,7 +1115,6 @@ exports.buscarPublico = async (filtros = {}) => {
         SELECT url
         FROM veiculo_foto
         WHERE veiculo_id=v.id
-        AND loja_id = v.loja_id
         ORDER BY principal DESC
         LIMIT 1
       ), 'sem-foto.jpg') foto,
@@ -1367,87 +1131,62 @@ exports.buscarPublico = async (filtros = {}) => {
     ORDER BY v.data_cadastro DESC
     LIMIT $${valores.length + 1}
     OFFSET $${valores.length + 2}
-  `
+  `;
 
-  valores.push(limit, offset)
+  valores.push(limit, offset);
 
-  const r = await db.query(query, valores)
+  const r = await db.query(query, valores);
 
-  const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
-
-  const data = r.rows.map(v => {
-
-    let foto = v.foto || "sem-foto.jpg"
-
-    if (foto.startsWith("http")) {
-      return {
-        ...v,
-        foto
-      }
-    }
-
-    return {
-      ...v,
-      foto: `${BASE_URL}/uploads/${foto}`
-    }
-  })
+  const data = r.rows.map(v => ({
+    ...v,
+    foto: normalizarFoto(v.foto)
+  }));
 
   return {
     page,
-    totalPages,
-    total,
     data
-  }
-
-
+  };
 }
 
-exports.buscarPublicoPorId = async (id)=>{
+
+exports.buscarPublicoPorId = async (id) => {
 
   const r = await db.query(`
-SELECT
-v.*,
-l.nome as loja,
-l.cidade,
-l.estado,
-(
-SELECT url
-FROM veiculo_foto
-WHERE veiculo_id = v.id
-ORDER BY principal DESC
-LIMIT 1
-) foto
-FROM veiculo v
-JOIN loja l ON l.id = v.loja_id
-WHERE v.id=$1
-  `,[id])
+    SELECT
+      v.*,
+      l.nome as loja,
+      l.cidade,
+      l.estado,
 
-  const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+      COALESCE((
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
+        ORDER BY principal DESC
+        LIMIT 1
+      ), 'sem-foto.jpg') foto
 
-  const v = r.rows[0]
+    FROM veiculo v
 
-  if(!v) return null
+    JOIN loja l
+    ON l.id = v.loja_id
 
-    return {
-      ...v,
+    WHERE v.id = $1
+  `, [id]);
 
-      foto: !v.foto
-      ? `${BASE_URL}/uploads/sem-foto.jpg`
+  const v = r.rows[0];
 
-      : v.foto.startsWith("http")
-      ? v.foto
+  if (!v) return null;
 
-      : `${BASE_URL}/uploads/${v.foto}`
-    }
+  return {
+    ...v,
+    foto: normalizarFoto(v.foto)
+  };
+}
 
-  }
 
 ////FIM ////
-  exports.filtros = async ()=>{
+exports.filtros = async ()=>{
 
 /* marcas */
 
@@ -1585,41 +1324,17 @@ ORDER BY ano_modelo DESC
     return r.rows
   }
 
-  exports.listarPublico = async (filtros = {}) => {
+exports.listarPublico = async (filtros = {}) => {
 
-    const params = [];
+  const params = [];
 
-    let where = `WHERE v.status = 'disponivel'`;
+  let where = `WHERE v.status = 'disponivel'`;
 
-  /* 🔍 FILTROS */
+  const page = Number(filtros.page) || 1;
+  const limit = 12;
+  const offset = (page - 1) * limit;
 
-    if (filtros.marca) {
-      params.push(`%${filtros.marca}%`);
-      where += ` AND v.marca ILIKE $${params.length}`;
-    }
-
-    if (filtros.modelo) {
-      params.push(`%${filtros.modelo}%`);
-      where += ` AND v.modelo ILIKE $${params.length}`;
-    }
-
-    if (filtros.preco) {
-      params.push(Number(filtros.preco));
-      where += ` AND v.valor <= $${params.length}`;
-    }
-
-    if (filtros.cidade) {
-      params.push(`%${filtros.cidade}%`);
-      where += ` AND l.cidade ILIKE $${params.length}`;
-    }
-
-  /* 🔢 PAGINAÇÃO */
-
-    const page = Number(filtros.page) || 1;
-    const limit = 12;
-    const offset = (page - 1) * limit;
-
-    let query = `
+  let query = `
     SELECT 
       v.id,
       v.marca,
@@ -1630,66 +1345,50 @@ ORDER BY ano_modelo DESC
       l.estado,
       l.nome as loja,
       v.loja_id,
-      (
+
+      COALESCE((
         SELECT url 
         FROM veiculo_foto 
         WHERE veiculo_id = v.id 
+        ORDER BY principal DESC
         LIMIT 1
-      ) as foto
+      ), 'sem-foto.jpg') as foto
+
     FROM veiculo v
     LEFT JOIN loja l ON l.id = v.loja_id
+
     ${where}
-    `;
+  `;
 
-    params.push(limit);
-    query += ` LIMIT $${params.length}`;
+  params.push(limit);
+  query += ` LIMIT $${params.length}`;
 
-    params.push(offset);
-    query += ` OFFSET $${params.length}`;
+  params.push(offset);
+  query += ` OFFSET $${params.length}`;
 
-    const result = await db.query(query, params);
+  const result = await db.query(query, params);
 
-  /* 🔢 TOTAL (AGORA CORRETO) */
-
-    const totalResult = await db.query(`
+  const totalResult = await db.query(`
     SELECT COUNT(*)
     FROM veiculo v
     LEFT JOIN loja l ON l.id = v.loja_id
     ${where}
-    `, params.slice(0, -2));
+  `);
 
-    const total = Number(totalResult.rows[0].count);
-    const totalPages = Math.ceil(total / limit);
+  const total = Number(totalResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
 
-    const BASE_URL =
-    process.env.BASE_URL ||
-    "https://mfscars-backend.onrender.com"
+  const data = result.rows.map(v => ({
+    ...v,
+    foto: normalizarFoto(v.foto)
+  }));
 
-    const data = result.rows.map(v => {
-
-      let foto = v.foto || "sem-foto.jpg"
-
-      if (foto.startsWith("http")) {
-        return {
-          ...v,
-          foto
-        }
-      }
-
-      return {
-        ...v,
-        foto: `${BASE_URL}/uploads/${foto}`
-      }
-    })
-
-    return {
-      data,
-      page,
-      totalPages
-    }
-
-
+  return {
+    data,
+    page,
+    totalPages
   };
+}
 
 
   exports.excluirDocumento = async (id) => {
@@ -1720,9 +1419,13 @@ ORDER BY ano_modelo DESC
     }
   }
 
-  exports.fotos = async (veiculoId, empresaId, lojaId) => {
+ exports.fotos = async (
+  veiculoId,
+  empresaId,
+  lojaId
+) => {
 
-    let query = `
+  let query = `
     SELECT 
       id,
       veiculo_id,
@@ -1730,41 +1433,34 @@ ORDER BY ano_modelo DESC
       loja_id,
       url,
       principal
+
     FROM veiculo_foto
+
     WHERE veiculo_id = $1
-    `
+  `;
 
-    const params = [veiculoId]
+  const params = [veiculoId];
 
-    if (empresaId !== null && empresaId !== undefined) {
-      params.push(empresaId)
-      query += ` AND empresa_id = $${params.length}`
-    }
-
-    if (lojaId !== null && lojaId !== undefined) {
-      params.push(lojaId)
-      query += ` AND loja_id = $${params.length}`
-    }
-
-    query += ` ORDER BY principal DESC, id ASC`
-
-    const r = await db.query(query, params)
-
-    const BASE_URL =
-    process.env.BASE_URL ||
-    "https://mfscars-backend.onrender.com"
-
-    return r.rows.map(f => ({
-
-      ...f,
-
-      url:
-      f.url?.startsWith("http")
-      ? f.url
-      : `${BASE_URL}/uploads/${f.url}`
-    }))
-
+  if (empresaId !== null && empresaId !== undefined) {
+    params.push(empresaId);
+    query += ` AND empresa_id = $${params.length}`;
   }
+
+  if (lojaId !== null && lojaId !== undefined) {
+    params.push(lojaId);
+    query += ` AND loja_id = $${params.length}`;
+  }
+
+  query += ` ORDER BY principal DESC, id ASC`;
+
+  const r = await db.query(query, params);
+
+  return r.rows.map(f => ({
+    ...f,
+    url: normalizarFoto(f.url)
+  }));
+}
+ 
 
   exports.contarFotos = async (veiculoId) => {
     const result = await db.query(

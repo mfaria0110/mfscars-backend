@@ -1,33 +1,21 @@
 const db = require("../../shared/database/db");
-const { withTransaction } = require("../../shared/database/transaction");
-const fs = require("fs")
-const path = require("path")
-const UPLOAD_PATH = path.resolve(__dirname, "../../../uploads")
 
-const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+const {
+  withTransaction
+} = require("../../shared/database/transaction");
 
 function normalizarFoto(foto) {
 
-  foto =
-    String(foto || "")
-      .trim()
-
-  if (!foto) {
-
-    return `${BASE_URL}/uploads/sem-foto.jpg`
-  }
-
   if (
-    foto.includes("http://") ||
-    foto.includes("https://")
+    !foto ||
+    foto === "null" ||
+    foto === "undefined"
   ) {
 
-    return foto
+    return "https://mfscars-backend.onrender.com/uploads/sem-foto.jpg"
   }
 
-  return `${BASE_URL}/uploads/${foto}`
+  return foto
 }
 
 exports.listar = async (filtros = {}) => {
@@ -226,10 +214,7 @@ exports.detalhes = async (id, empresaId, lojaId) => {
       empresa_id,
       loja_id,
       principal,
-      CASE 
-        WHEN url LIKE 'http%' THEN url
-        ELSE '${BASE_URL}/' || url
-      END as url
+      url
     FROM veiculo_foto
     WHERE veiculo_id = $1
     ORDER BY principal DESC, id ASC
@@ -772,56 +757,6 @@ exports.excluir = async (id, empresaId, lojaId) => {
       [id]
       )
 
-    /* ==========================
-       REMOVER ARQUIVOS DAS FOTOS
-    ========================== */
-    for (const midia of midias.rows) {
-      try {
-        if (!midia.url) continue
-
-          const nomeArquivo = path.basename(midia.url)
-        const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
-
-        if (fs.existsSync(caminhoArquivo)) {
-          await fs.promises.unlink(caminhoArquivo)
-        }
-
-      } catch (err) {
-        console.error("Erro ao remover foto:", err)
-      }
-    }
-
-    /* ==========================
-       BUSCAR DOCUMENTOS
-    ========================== */
-    const docs = await client.query(
-      `
-      SELECT arquivo
-      FROM veiculo_documento
-      WHERE veiculo_id = $1
-      `,
-      [id]
-      )
-
-    /* ==========================
-       REMOVER ARQUIVOS DOS DOCUMENTOS
-    ========================== */
-    for (const doc of docs.rows) {
-      try {
-        if (!doc.arquivo) continue
-
-          const nomeArquivo = path.basename(doc.arquivo)
-
-        const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
-
-        if (fs.existsSync(caminhoArquivo)) {
-          await fs.promises.unlink(caminhoArquivo)
-        }
-
-      } catch (err) {
-        console.error("Erro ao remover documento:", err)
-      }
-    }
 
     /* ==========================
        DELETE TABELAS FILHAS
@@ -983,39 +918,6 @@ exports.removerFoto = async (id) => {
       url
     } = foto.rows[0]
 
-    /* =========================
-       REMOVE ARQUIVO FÍSICO
-    ========================= */
-
-    try {
-
-      if (url) {
-
-        const nomeArquivo =
-        path.basename(url)
-
-        const caminhoArquivo =
-        path.join(
-          UPLOAD_PATH,
-          nomeArquivo
-          )
-
-        if (
-          fs.existsSync(caminhoArquivo)
-          ) {
-          await fs.promises.unlink(
-            caminhoArquivo
-            )
-      }
-    }
-
-  } catch (err) {
-
-    console.error(
-      "Erro ao remover arquivo:",
-      err
-      )
-  }
 
     /* =========================
        REMOVE BANCO

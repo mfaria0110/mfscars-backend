@@ -8,13 +8,13 @@ exports.listar = async (filtros = {}) => {
 
   if (!filtros.loja_id || Number.isNaN(Number(filtros.loja_id))) {
     return {
-    page: 1,
-    limit: 12,
-    total: 0,
-    totalPages: 0,
-    data: []
-  };
-}
+      page: 1,
+      limit: 12,
+      total: 0,
+      totalPages: 0,
+      data: []
+    };
+  }
 
   const page = parseInt(filtros.page) || 1;
   const limit = parseInt(filtros.limit) || 12;
@@ -26,27 +26,27 @@ exports.listar = async (filtros = {}) => {
      WHERE BASE (🔥 REGRA CORRETA)
   ============================== */
 
-let where = `WHERE 1=1`;
+  let where = `WHERE 1=1`;
 
 /* ===============================
    MULTI-TENANT
 ============================== */
 
-if (filtros.empresa_id) {
-  valores.push(filtros.empresa_id);
-  where += ` AND v.empresa_id = $${valores.length}`;
-}
+  if (filtros.empresa_id) {
+    valores.push(filtros.empresa_id);
+    where += ` AND v.empresa_id = $${valores.length}`;
+  }
 
-if (filtros.loja_id) {
-  valores.push(filtros.loja_id);
-  where += ` AND v.loja_id = $${valores.length}`;
-}
+  if (filtros.loja_id) {
+    valores.push(filtros.loja_id);
+    where += ` AND v.loja_id = $${valores.length}`;
+  }
 
 /* ===============================
    STATUS (DISPONÍVEL + VENDIDOS 30 DIAS)
 ============================== */
 
-if (filtros.empresa_id && filtros.loja_id) {
+  if (filtros.empresa_id && filtros.loja_id) {
 
   const empresaParam = 1; // já inserido antes
   const lojaParam = 2;    // já inserido antes
@@ -97,7 +97,7 @@ if (filtros.cor) {
   where += ` AND v.cor ILIKE $${valores.length}`;
 }
 
-/* 🔥 NOVO: PLACA INTELIGENTE */
+/* 🔥 VEICULO NOVO: PLACA INTELIGENTE */
 if (filtros.placa) {
   valores.push(`%${filtros.placa.replace(/\W/g, '')}%`);
   where += `
@@ -183,37 +183,37 @@ if (filtros.combustivel) {
      ORDENAÇÃO
   ============================== */
 
-  const ordenacoes = {
-    recentes: "v.data_cadastro DESC",
-    preco_asc: "v.valor ASC",
-    preco_desc: "v.valor DESC",
-    ano_desc: "v.ano_modelo DESC",
-    ano_asc: "v.ano_modelo ASC",
-    km_asc: "v.quilometragem ASC",
-    km_desc: "v.quilometragem DESC"
-  };
+const ordenacoes = {
+  recentes: "v.data_cadastro DESC",
+  preco_asc: "v.valor ASC",
+  preco_desc: "v.valor DESC",
+  ano_desc: "v.ano_modelo DESC",
+  ano_asc: "v.ano_modelo ASC",
+  km_asc: "v.quilometragem ASC",
+  km_desc: "v.quilometragem DESC"
+};
 
-  const ordem = ordenacoes[filtros.sort] || "v.data_cadastro DESC";
+const ordem = ordenacoes[filtros.sort] || "v.data_cadastro DESC";
 
   /* ===============================
      TOTAL
   ============================== */
 
-  const totalQuery = `
+const totalQuery = `
     SELECT COUNT(*)
     FROM veiculo v
     ${where}
-  `;
+`;
 
-  const totalResult = await db.query(totalQuery, valores);
-  const total = parseInt(totalResult.rows[0].count);
-  const totalPages = Math.ceil(total / limit);
+const totalResult = await db.query(totalQuery, valores);
+const total = parseInt(totalResult.rows[0].count);
+const totalPages = Math.ceil(total / limit);
 
   /* ===============================
      QUERY PRINCIPAL
   ============================== */
 
-  let query = `
+let query = `
     SELECT 
       v.*,
       l.nome as loja,
@@ -231,18 +231,18 @@ if (filtros.combustivel) {
     ) f ON true
     ${where}
     ORDER BY ${ordem}
-  `;
+`;
 
-  valores.push(limit);
-  valores.push(offset);
+valores.push(limit);
+valores.push(offset);
 
-  query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
+query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
 
 const r = await db.query(query, valores);
 
 const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+process.env.BASE_URL ||
+"https://mfscars-backend.onrender.com"
 
 const data = r.rows.map(v => {
 
@@ -260,17 +260,17 @@ const data = r.rows.map(v => {
     ...v,
 
     foto:
-      `${BASE_URL}/uploads/${foto}`
+    `${BASE_URL}/uploads/${foto}`
   }
 })
 
-  return {
-    page,
-    limit,
-    total,
-    totalPages,
-    data
-  };
+return {
+  page,
+  limit,
+  total,
+  totalPages,
+  data
+};
 
 };
 
@@ -325,13 +325,13 @@ exports.modelos = async (marcaId) => {
 
 exports.opcionais = async ()=>{
 
-const r = await db.query(`
+  const r = await db.query(`
 SELECT id,nome
 FROM opcional
 ORDER BY nome
-`)
+  `)
 
-return r.rows
+  return r.rows
 }
 
 exports.detalhes = async (id, empresaId, lojaId) => {
@@ -375,7 +375,7 @@ exports.detalhes = async (id, empresaId, lojaId) => {
      FOTOS (SEM BLOQUEIO)
   ============================== */
 
-const BASE_URL =
+  const BASE_URL =
   process.env.BASE_URL ||
   "https://mfscars-backend.onrender.com"
 
@@ -409,22 +409,22 @@ const BASE_URL =
   `, [id])
 
   const proprietario = await db.query(
-  `
+    `
   SELECT *
   FROM veiculo_proprietario
   WHERE veiculo_id = $1
   LIMIT 1
-  `,
-  [id]
-)
+    `,
+    [id]
+    )
 
-return {
-  veiculo: veiculo.rows[0],
-  fotos: fotos.rows,
-  opcionais: opcionais.rows,
-  proprietario:
+  return {
+    veiculo: veiculo.rows[0],
+    fotos: fotos.rows,
+    opcionais: opcionais.rows,
+    proprietario:
     proprietario.rows[0] || null
-}
+  }
   
 }
 
@@ -432,7 +432,7 @@ exports.veiculosEmpresa = async (
   empresaId,
   lojaId,
   filtros = {}
-) => {
+  ) => {
 
   let query = `
     SELECT
@@ -451,10 +451,10 @@ exports.veiculosEmpresa = async (
   const valores = []
 
   /* 🔥 EMPRESA */
- if (empresaId !== null && empresaId !== undefined) {
-  valores.push(empresaId)
-  query += ` AND v.empresa_id = $${valores.length}`
-}
+  if (empresaId !== null && empresaId !== undefined) {
+    valores.push(empresaId)
+    query += ` AND v.empresa_id = $${valores.length}`
+  }
 
   /* 🔥 LOJA */
   if (lojaId !== null && lojaId !== undefined) {
@@ -489,20 +489,20 @@ exports.veiculosEmpresa = async (
 
 
   /* 🔥 ANO */
-if (filtros.anoMin) {
-  const ano = parseInt(filtros.anoMin)
+  if (filtros.anoMin) {
+    const ano = parseInt(filtros.anoMin)
 
-  if (!isNaN(ano)) {
-    valores.push(ano)
+    if (!isNaN(ano)) {
+      valores.push(ano)
 
-    query += `
+      query += `
       AND CAST(
         SPLIT_PART(v.ano_modelo, '/', 1)
         AS INTEGER
       ) >= $${valores.length}
-    `
+      `
+    }
   }
-}
 
 
 
@@ -518,34 +518,34 @@ if (filtros.anoMin) {
 
   query += ` ORDER BY v.data_cadastro DESC`
 
- const r = await db.query(query, valores)
+  const r = await db.query(query, valores)
 
-const BASE_URL =
+  const BASE_URL =
   process.env.BASE_URL ||
   "https://mfscars-backend.onrender.com"
 
-const data = r.rows.map(v => {
+  const data = r.rows.map(v => {
 
-  let foto = v.foto || "sem-foto.jpg"
+    let foto = v.foto || "sem-foto.jpg"
 
-  if (
-    foto &&
-    foto.startsWith("http")
-  ) {
+    if (
+      foto &&
+      foto.startsWith("http")
+      ) {
+      return {
+        ...v,
+        foto
+      }
+    }
+
     return {
       ...v,
-      foto
-    }
-  }
-
-  return {
-    ...v,
-    foto:
+      foto:
       `${BASE_URL}/uploads/${foto}`
-  }
-})
+    }
+  })
 
-return data
+  return data
 
 }
 
@@ -568,8 +568,8 @@ exports.criar = async (empresaId, lojaId, dados) => {
     const carroceria = dados.carroceria || null;
 
     const placa = dados.placa
-      ? dados.placa.replace(/\W/g, '').toUpperCase()
-      : null;
+    ? dados.placa.replace(/\W/g, '').toUpperCase()
+    : null;
 
     const renavam = dados.renavam || null;
     const descricao = dados.descricao?.trim() || null;
@@ -582,8 +582,8 @@ exports.criar = async (empresaId, lojaId, dados) => {
     const licenciado = dados.licenciado;
 
     const opcionais = Array.isArray(dados.opcionais)
-      ? dados.opcionais
-      : [];
+    ? dados.opcionais
+    : [];
 
     /* ===============================
        🔒 VALIDAÇÃO
@@ -593,36 +593,36 @@ exports.criar = async (empresaId, lojaId, dados) => {
     if (!modelo) throw new Error("Modelo é obrigatório");
     if (!valor || isNaN(parseFloat(valor))) throw new Error("Valor inválido");
     if (
-        ano &&
-        !/^\d{4}(\/\d{4})?$/.test(String(ano))
+      ano &&
+      !/^\d{4}(\/\d{4})?$/.test(String(ano))
       ) {
-        throw new Error(
-          "Ano deve estar no formato 2011 ou 2011/2012"
+      throw new Error(
+        "Ano deve estar no formato 2011 ou 2011/2012"
         )
-      }
-    if (quilometragem && isNaN(parseInt(quilometragem))) throw new Error("Quilometragem inválida");
+  }
+  if (quilometragem && isNaN(parseInt(quilometragem))) throw new Error("Quilometragem inválida");
 
     /* ===============================
        🔄 CONVERSÕES
     ============================== */
 
-    const aceita_troca_bool = aceita_troca === true || aceita_troca === "true";
-    const licenciado_bool = licenciado === true || licenciado === "true";
+  const aceita_troca_bool = aceita_troca === true || aceita_troca === "true";
+  const licenciado_bool = licenciado === true || licenciado === "true";
 
-    const anoVal = ano ? String(ano).trim() : null;
+  const anoVal = ano ? String(ano).trim() : null;
 
-    const kmVal = quilometragem ? parseInt(quilometragem) : null;
-    const valorVal = valor ? parseFloat(valor) : null;
+  const kmVal = quilometragem ? parseInt(quilometragem) : null;
+  const valorVal = valor ? parseFloat(valor) : null;
 
-    const placaFinalVal = placa
-      ? parseInt(placa.replace(/\D/g, '').slice(-1))
-      : null;
+  const placaFinalVal = placa
+  ? parseInt(placa.replace(/\D/g, '').slice(-1))
+  : null;
 
     /* ===============================
        🔒 LOCK + VALIDAR PLANO
     ============================== */
 
-const planoRes = await client.query(`
+  const planoRes = await client.query(`
   SELECT lp.usados, p.limite_veiculos
   FROM loja_plano lp
   JOIN plano p ON p.id = lp.plano_id
@@ -631,23 +631,23 @@ const planoRes = await client.query(`
   ORDER BY lp.data_inicio DESC
   LIMIT 1
   FOR UPDATE
-`, [lojaId]);
+  `, [lojaId]);
 
-    if (!planoRes.rows.length) {
-      throw new Error("Nenhum plano ativo encontrado");
-    }
+  if (!planoRes.rows.length) {
+    throw new Error("Nenhum plano ativo encontrado");
+  }
 
-    const plano = planoRes.rows[0];
+  const plano = planoRes.rows[0];
 
-    if (plano.usados >= plano.limite_veiculos) {
-      throw new Error("Limite do plano atingido. Faça upgrade.");
-    }
+  if (plano.usados >= plano.limite_veiculos) {
+    throw new Error("Limite do plano atingido. Faça upgrade.");
+  }
 
     /* ===============================
        🚗 INSERIR VEÍCULO
     ============================== */
 
-    const r = await client.query(`
+  const r = await client.query(`
       INSERT INTO veiculo (
         empresa_id, loja_id, marca, modelo, versao,
         ano_modelo, quilometragem, valor, combustivel, cambio,
@@ -666,19 +666,19 @@ const planoRes = await client.query(`
       descricao, aceita_troca_bool, licenciado_bool
     ]);
 
-    const veiculoId = r.rows[0].id;
+  const veiculoId = r.rows[0].id;
 
     /* ===============================
    PROPRIETÁRIO
 ============================== */
 
-if (
-  dados.proprietario_nome ||
-  dados.proprietario_cpf ||
-  dados.proprietario_telefone
-) {
-  await client.query(
-    `
+  if (
+    dados.proprietario_nome ||
+    dados.proprietario_cpf ||
+    dados.proprietario_telefone
+    ) {
+    await client.query(
+      `
     INSERT INTO veiculo_proprietario (
       veiculo_id,
       nome,
@@ -692,74 +692,74 @@ if (
     VALUES (
       $1,$2,$3,$4,$5,$6,$7,$8
     )
-    `,
-    [
-      veiculoId,
-      dados.proprietario_nome || null,
-      dados.proprietario_cpf || null,
-      dados.proprietario_telefone || null,
-      dados.proprietario_email || null,
-      dados.proprietario_endereco || null,
-      dados.proprietario_cidade || null,
-      dados.proprietario_estado || null
-    ]
-  )
+      `,
+      [
+        veiculoId,
+        dados.proprietario_nome || null,
+        dados.proprietario_cpf || null,
+        dados.proprietario_telefone || null,
+        dados.proprietario_email || null,
+        dados.proprietario_endereco || null,
+        dados.proprietario_cidade || null,
+        dados.proprietario_estado || null
+      ]
+      )
 }
 
     /* ===============================
        ⚙️ OPCIONAIS (BATCH)
     ============================== */
 
-    if (opcionais.length) {
-      const valores = [];
-      const placeholders = [];
+if (opcionais.length) {
+  const valores = [];
+  const placeholders = [];
 
-      opcionais.forEach((op, index) => {
-        const pos = index * 2;
-        placeholders.push(`($${pos + 1}, $${pos + 2})`);
-        valores.push(veiculoId, parseInt(op));
-      });
+  opcionais.forEach((op, index) => {
+    const pos = index * 2;
+    placeholders.push(`($${pos + 1}, $${pos + 2})`);
+    valores.push(veiculoId, parseInt(op));
+  });
 
-      await client.query(`
+  await client.query(`
         INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
         VALUES ${placeholders.join(",")}
-      `, valores);
-    }
+  `, valores);
+}
 
     /* ===============================
        📈 INCREMENTAR USO
     ============================== */
 
-    await client.query(`
+await client.query(`
       UPDATE loja_plano
       SET usados = usados + 1
       WHERE loja_id = $1
       AND status = 'ativo'
-    `, [lojaId]);
+`, [lojaId]);
 
     /* ===============================
        📜 LOG
     ============================== */
 
-    await client.query(`
+await client.query(`
       INSERT INTO plano_consumo_log (loja_id, veiculo_id, acao)
       VALUES ($1, $2, 'CRIACAO_VEICULO')
-    `, [lojaId, veiculoId]);
+`, [lojaId, veiculoId]);
 
-    return r.rows[0];
-  });
+return r.rows[0];
+});
 
   /* ===============================
      ♻️ INVALIDAR CACHE
   ============================== */
 
-  const dashboardCache = require("../dashboard/dashboard.repository");
+const dashboardCache = require("../dashboard/dashboard.repository");
 
-  if (dashboardCache.cache) {
-    dashboardCache.cache.delete(`${empresaId}_${lojaId}`);
-  }
+if (dashboardCache.cache) {
+  dashboardCache.cache.delete(`${empresaId}_${lojaId}`);
+}
 
-  return resultado;
+return resultado;
 };
 
 
@@ -784,18 +784,18 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
     const licenciado = dados.licenciado
 
     const placaFinal = placa
-      ? placa.replace(/\W/g, '').toUpperCase()
-      : null
+    ? placa.replace(/\W/g, '').toUpperCase()
+    : null
 
     const aceita_troca_bool =
-      aceita_troca === true || aceita_troca === "true"
+    aceita_troca === true || aceita_troca === "true"
 
     const licenciado_bool =
-      licenciado === true || licenciado === "true"
+    licenciado === true || licenciado === "true"
 
     const anoVal = ano_modelo
-  ? String(ano_modelo).trim()
-  : null
+    ? String(ano_modelo).trim()
+    : null
     
     const kmVal = parseInt(quilometragem) || null
     const valorVal = Number(valor) || 0
@@ -862,22 +862,22 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
 ============================== */
 
 /* remove antigo */
-await client.query(
-  `
+    await client.query(
+      `
   DELETE FROM veiculo_proprietario
   WHERE veiculo_id = $1
-  `,
-  [id]
-)
+      `,
+      [id]
+      )
 
 /* insere novo */
-if (
-  dados.proprietario_nome ||
-  dados.proprietario_cpf ||
-  dados.proprietario_telefone
-) {
-  await client.query(
-    `
+    if (
+      dados.proprietario_nome ||
+      dados.proprietario_cpf ||
+      dados.proprietario_telefone
+      ) {
+      await client.query(
+        `
     INSERT INTO veiculo_proprietario (
       veiculo_id,
       nome,
@@ -891,48 +891,48 @@ if (
     VALUES (
       $1,$2,$3,$4,$5,$6,$7,$8
     )
-    `,
-    [
-      id,
-      dados.proprietario_nome || null,
-      dados.proprietario_cpf || null,
-      dados.proprietario_telefone || null,
-      dados.proprietario_email || null,
-      dados.proprietario_endereco || null,
-      dados.proprietario_cidade || null,
-      dados.proprietario_estado || null
-    ]
-  )
-}
+        `,
+        [
+          id,
+          dados.proprietario_nome || null,
+          dados.proprietario_cpf || null,
+          dados.proprietario_telefone || null,
+          dados.proprietario_email || null,
+          dados.proprietario_endereco || null,
+          dados.proprietario_cidade || null,
+          dados.proprietario_estado || null
+        ]
+        )
+  }
 
     /* 🔥 OPCIONAIS */
-    if (dados.opcionais) {
+  if (dados.opcionais) {
 
-      await client.query(
-        `DELETE FROM veiculo_opcional WHERE veiculo_id=$1`,
-        [id]
-      )
+    await client.query(
+  `DELETE FROM veiculo_opcional WHERE veiculo_id=$1`,
+  [id]
+  )
 
-      if (dados.opcionais.length) {
+    if (dados.opcionais.length) {
 
-        const valores = []
-        const placeholders = []
+      const valores = []
+      const placeholders = []
 
-        dados.opcionais.forEach((op, index) => {
-          const pos = index * 2
-          placeholders.push(`($${pos + 1}, $${pos + 2})`)
-          valores.push(id, parseInt(op))
-        })
+      dados.opcionais.forEach((op, index) => {
+        const pos = index * 2
+        placeholders.push(`($${pos + 1}, $${pos + 2})`)
+        valores.push(id, parseInt(op))
+      })
 
-        await client.query(`
+      await client.query(`
           INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
           VALUES ${placeholders.join(",")}
-        `, valores)
-      }
+      `, valores)
     }
+  }
 
-    return r.rows[0]
-  })
+  return r.rows[0]
+})
 }
 
 exports.excluir = async (id, empresaId, lojaId) => {
@@ -951,7 +951,7 @@ exports.excluir = async (id, empresaId, lojaId) => {
       AND loja_id = $3
       `,
       [id, empresaId, lojaId]
-    )
+      )
 
     if (!veiculo.rows.length) {
       throw new Error("Veículo não encontrado")
@@ -967,7 +967,7 @@ exports.excluir = async (id, empresaId, lojaId) => {
       WHERE veiculo_id = $1
       `,
       [id]
-    )
+      )
 
     /* ==========================
        REMOVER ARQUIVOS DAS FOTOS
@@ -976,12 +976,12 @@ exports.excluir = async (id, empresaId, lojaId) => {
       try {
         if (!midia.url) continue
 
-        const nomeArquivo = path.basename(midia.url)
+          const nomeArquivo = path.basename(midia.url)
         const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
 
         if (fs.existsSync(caminhoArquivo)) {
           await fs.promises.unlink(caminhoArquivo)
-          }
+        }
 
       } catch (err) {
         console.error("Erro ao remover foto:", err)
@@ -998,7 +998,7 @@ exports.excluir = async (id, empresaId, lojaId) => {
       WHERE veiculo_id = $1
       `,
       [id]
-    )
+      )
 
     /* ==========================
        REMOVER ARQUIVOS DOS DOCUMENTOS
@@ -1007,7 +1007,7 @@ exports.excluir = async (id, empresaId, lojaId) => {
       try {
         if (!doc.arquivo) continue
 
-        const nomeArquivo = path.basename(doc.arquivo)
+          const nomeArquivo = path.basename(doc.arquivo)
 
         const caminhoArquivo = path.join(UPLOAD_PATH, nomeArquivo)
 
@@ -1025,24 +1025,24 @@ exports.excluir = async (id, empresaId, lojaId) => {
     ========================== */
 
     await client.query(
-      `DELETE FROM veiculo_foto WHERE veiculo_id = $1`,
-      [id]
-    )
+  `DELETE FROM veiculo_foto WHERE veiculo_id = $1`,
+  [id]
+  )
 
     await client.query(
-      `DELETE FROM veiculo_opcional WHERE veiculo_id = $1`,
-      [id]
-    )
+  `DELETE FROM veiculo_opcional WHERE veiculo_id = $1`,
+  [id]
+  )
 
     await client.query(
-      `DELETE FROM veiculo_documento WHERE veiculo_id = $1`,
-      [id]
-    )
+  `DELETE FROM veiculo_documento WHERE veiculo_id = $1`,
+  [id]
+  )
 
     await client.query(
-      `DELETE FROM veiculo_proprietario WHERE veiculo_id = $1`,
-      [id]
-    )
+  `DELETE FROM veiculo_proprietario WHERE veiculo_id = $1`,
+  [id]
+  )
 
     /* ==========================
        DELETE VEÍCULO
@@ -1054,8 +1054,8 @@ exports.excluir = async (id, empresaId, lojaId) => {
       AND empresa_id = $2
       AND loja_id = $3
       `,
-       [id, empresaId, lojaId]
-    )
+      [id, empresaId, lojaId]
+      )
 
     /* ==========================
        RETORNO
@@ -1071,14 +1071,14 @@ exports.excluir = async (id, empresaId, lojaId) => {
 
 exports.verificarDono = async (veiculoId)=>{
 
-const r = await db.query(
-`SELECT empresa_id, loja_id
+  const r = await db.query(
+    `SELECT empresa_id, loja_id
 FROM veiculo
-WHERE id=$1`,
-[veiculoId]
-)
+    WHERE id=$1`,
+    [veiculoId]
+    )
 
-return r.rows[0]
+  return r.rows[0]
 
 }
 
@@ -1087,7 +1087,7 @@ exports.salvarFoto = async (
   lojaId,
   veiculoId,
   url
-) => {
+  ) => {
   return await withTransaction(async (client) => {
 
     const veiculo = await client.query(
@@ -1103,32 +1103,32 @@ exports.salvarFoto = async (
         empresaId,
         lojaId
       ]
-    )
+      )
 
     if (!veiculo.rows.length) {
       throw new Error(
         "Veículo não encontrado"
-      )
+        )
     }
 
     const totalFotos =
-      await client.query(
-        `
+    await client.query(
+      `
         SELECT COUNT(*)
         FROM veiculo_foto
         WHERE veiculo_id = $1
-        `,
-        [veiculoId]
+      `,
+      [veiculoId]
       )
 
     const isPrimeira =
-      Number(
-        totalFotos.rows[0].count
+    Number(
+      totalFotos.rows[0].count
       ) === 0
 
     const r =
-      await client.query(
-        `
+    await client.query(
+      `
         INSERT INTO veiculo_foto (
           veiculo_id,
           empresa_id,
@@ -1138,14 +1138,14 @@ exports.salvarFoto = async (
         )
         VALUES ($1,$2,$3,$4,$5)
         RETURNING *
-        `,
-        [
-          veiculoId,
-          empresaId,
-          lojaId,
-          url,
-          isPrimeira
-        ]
+      `,
+      [
+        veiculoId,
+        empresaId,
+        lojaId,
+        url,
+        isPrimeira
+      ]
       )
 
     return r.rows[0]
@@ -1168,7 +1168,7 @@ exports.removerFoto = async (id) => {
       WHERE id = $1
       `,
       [id]
-    )
+      )
 
     if (!foto.rows.length) {
       throw new Error("Foto não encontrada")
@@ -1189,75 +1189,75 @@ exports.removerFoto = async (id) => {
       if (url) {
 
         const nomeArquivo =
-          path.basename(url)
+        path.basename(url)
 
         const caminhoArquivo =
-          path.join(
-            UPLOAD_PATH,
-            nomeArquivo
+        path.join(
+          UPLOAD_PATH,
+          nomeArquivo
           )
 
         if (
           fs.existsSync(caminhoArquivo)
-        ) {
+          ) {
           await fs.promises.unlink(
             caminhoArquivo
-          )
-        }
+            )
       }
-
-    } catch (err) {
-
-      console.error(
-        "Erro ao remover arquivo:",
-        err
-      )
     }
+
+  } catch (err) {
+
+    console.error(
+      "Erro ao remover arquivo:",
+      err
+      )
+  }
 
     /* =========================
        REMOVE BANCO
     ========================= */
 
-    await client.query(
-      `
+  await client.query(
+    `
       DELETE FROM veiculo_foto
       WHERE id = $1
-      `,
-      [id]
+    `,
+    [id]
     )
 
     /* =========================
        REDEFINE PRINCIPAL
     ========================= */
 
-    if (principal) {
+  if (principal) {
 
-      const outra =
-        await client.query(
-          `
+    const outra =
+    await client.query(
+      `
           SELECT id
           FROM veiculo_foto
           WHERE veiculo_id = $1
           LIMIT 1
-          `,
-          [veiculo_id]
-        )
+      `,
+      [veiculo_id]
+      )
 
-      if (outra.rows.length) {
+    if (outra.rows.length) {
 
-        await client.query(
-          `
+      await client.query(
+        `
           UPDATE veiculo_foto
           SET principal = true
           WHERE id = $1
-          `,
-          [outra.rows[0].id]
+        `,
+        [outra.rows[0].id]
         )
-      }
     }
+  }
 
-    return true
-  })
+  return true
+})
 }
 
 exports.definirPrincipal = async (id) => {
@@ -1265,9 +1265,9 @@ exports.definirPrincipal = async (id) => {
   return await withTransaction(async (client) => {
 
     const foto = await client.query(
-      `SELECT veiculo_id FROM veiculo_foto WHERE id=$1`,
-      [id]
-    )
+  `SELECT veiculo_id FROM veiculo_foto WHERE id=$1`,
+  [id]
+  )
 
     if (!foto.rows.length) {
       throw new Error("Foto não encontrada")
@@ -1276,14 +1276,14 @@ exports.definirPrincipal = async (id) => {
     const veiculoId = foto.rows[0].veiculo_id
 
     await client.query(
-      `UPDATE veiculo_foto SET principal=false WHERE veiculo_id=$1`,
-      [veiculoId]
-    )
+  `UPDATE veiculo_foto SET principal=false WHERE veiculo_id=$1`,
+  [veiculoId]
+  )
 
     await client.query(
-      `UPDATE veiculo_foto SET principal=true WHERE id=$1`,
-      [id]
-    )
+  `UPDATE veiculo_foto SET principal=true WHERE id=$1`,
+  [id]
+  )
   })
 }
 
@@ -1373,40 +1373,40 @@ exports.buscarPublico = async (filtros = {}) => {
 
   const r = await db.query(query, valores)
 
-const BASE_URL =
+  const BASE_URL =
   process.env.BASE_URL ||
   "https://mfscars-backend.onrender.com"
 
-const data = r.rows.map(v => {
+  const data = r.rows.map(v => {
 
-  let foto = v.foto || "sem-foto.jpg"
+    let foto = v.foto || "sem-foto.jpg"
 
-  if (foto.startsWith("http")) {
+    if (foto.startsWith("http")) {
+      return {
+        ...v,
+        foto
+      }
+    }
+
     return {
       ...v,
-      foto
+      foto: `${BASE_URL}/uploads/${foto}`
     }
-  }
+  })
 
   return {
-    ...v,
-    foto: `${BASE_URL}/uploads/${foto}`
+    page,
+    totalPages,
+    total,
+    data
   }
-})
-
-return {
-  page,
-  totalPages,
-  total,
-  data
-}
 
 
 }
 
 exports.buscarPublicoPorId = async (id)=>{
 
-const r = await db.query(`
+  const r = await db.query(`
 SELECT
 v.*,
 l.nome as loja,
@@ -1422,91 +1422,91 @@ LIMIT 1
 FROM veiculo v
 JOIN loja l ON l.id = v.loja_id
 WHERE v.id=$1
-`,[id])
+  `,[id])
 
-const BASE_URL =
+  const BASE_URL =
   process.env.BASE_URL ||
   "https://mfscars-backend.onrender.com"
 
-const v = r.rows[0]
+  const v = r.rows[0]
 
-if(!v) return null
+  if(!v) return null
 
-return {
-  ...v,
+    return {
+      ...v,
 
-  foto: !v.foto
-    ? `${BASE_URL}/uploads/sem-foto.jpg`
+      foto: !v.foto
+      ? `${BASE_URL}/uploads/sem-foto.jpg`
 
-    : v.foto.startsWith("http")
+      : v.foto.startsWith("http")
       ? v.foto
 
       : `${BASE_URL}/uploads/${v.foto}`
-}
+    }
 
-}
+  }
 
 ////FIM ////
-exports.filtros = async ()=>{
+  exports.filtros = async ()=>{
 
 /* marcas */
 
-const marcas = await db.query(`
+    const marcas = await db.query(`
 SELECT marca, COUNT(*) as total
 FROM veiculo
 WHERE status='disponivel'
 GROUP BY marca
 ORDER BY marca
-`)
+    `)
 
 
 /* combustivel */
 
-const combustiveis = await db.query(`
+    const combustiveis = await db.query(`
 SELECT combustivel, COUNT(*) as total
 FROM veiculo
 WHERE status='disponivel'
 GROUP BY combustivel
 ORDER BY combustivel
-`)
+    `)
 
 
 /* anos */
 
-const anos = await db.query(`
+    const anos = await db.query(`
 SELECT ano_modelo, COUNT(*) as total
 FROM veiculo
 WHERE status='disponivel'
 GROUP BY ano_modelo
 ORDER BY ano_modelo DESC
-`)
+    `)
 
 
-return {
+    return {
 
-marcas: marcas.rows,
-combustiveis: combustiveis.rows,
-anos: anos.rows
+      marcas: marcas.rows,
+      combustiveis: combustiveis.rows,
+      anos: anos.rows
 
-}
+    }
 
-}
+  }
 
-exports.similares = async (id) => {
+  exports.similares = async (id) => {
 
-  const base = await db.query(
-    `SELECT marca, modelo, valor
+    const base = await db.query(
+      `SELECT marca, modelo, valor
      FROM veiculo
-     WHERE id = $1`,
-    [id]
-  )
+      WHERE id = $1`,
+      [id]
+      )
 
-  if (!base.rows.length) return []
+    if (!base.rows.length) return []
 
-  const { marca, modelo, valor } = base.rows[0]
+      const { marca, modelo, valor } = base.rows[0]
 
-  const r = await db.query(
-    `
+    const r = await db.query(
+      `
     SELECT
       v.id,
       v.marca,
@@ -1525,48 +1525,48 @@ exports.similares = async (id) => {
       AND v.valor BETWEEN $3 * 0.7 AND $3 * 1.3
     ORDER BY v.data_cadastro DESC
     LIMIT 8
-    `,
-    [id, marca, valor]
-  )
+      `,
+      [id, marca, valor]
+      )
 
-  return r.rows
-}
+    return r.rows
+  }
 
-exports.toggleFavorito = async (usuarioId, veiculoId) => {
+  exports.toggleFavorito = async (usuarioId, veiculoId) => {
 
-  const existe = await db.query(
-    `SELECT id FROM favorito
-     WHERE usuario_id=$1 AND veiculo_id=$2`,
-    [usuarioId, veiculoId]
-  )
-
-  if (existe.rows.length > 0) {
-
-    await db.query(
-      `DELETE FROM favorito
-       WHERE usuario_id=$1 AND veiculo_id=$2`,
+    const existe = await db.query(
+      `SELECT id FROM favorito
+      WHERE usuario_id=$1 AND veiculo_id=$2`,
       [usuarioId, veiculoId]
-    )
+      )
 
-    return { favoritado: false }
+    if (existe.rows.length > 0) {
 
-  } else {
+      await db.query(
+        `DELETE FROM favorito
+        WHERE usuario_id=$1 AND veiculo_id=$2`,
+        [usuarioId, veiculoId]
+        )
 
-    await db.query(
-      `INSERT INTO favorito (usuario_id, veiculo_id)
-       VALUES ($1,$2)`,
-      [usuarioId, veiculoId]
-    )
+      return { favoritado: false }
 
-    return { favoritado: true }
+    } else {
+
+      await db.query(
+        `INSERT INTO favorito (usuario_id, veiculo_id)
+        VALUES ($1,$2)`,
+        [usuarioId, veiculoId]
+        )
+
+      return { favoritado: true }
+
+    }
 
   }
 
-}
+  exports.listarFavoritos = async (usuarioId) => {
 
-exports.listarFavoritos = async (usuarioId) => {
-
-  const r = await db.query(`
+    const r = await db.query(`
     SELECT
       v.*,
       (
@@ -1580,46 +1580,46 @@ exports.listarFavoritos = async (usuarioId) => {
     JOIN veiculo v ON v.id = f.veiculo_id
     WHERE f.usuario_id=$1
     ORDER BY f.created_at DESC
-  `, [usuarioId])
+    `, [usuarioId])
 
-  return r.rows
-}
+    return r.rows
+  }
 
-exports.listarPublico = async (filtros = {}) => {
+  exports.listarPublico = async (filtros = {}) => {
 
-  const params = [];
+    const params = [];
 
-  let where = `WHERE v.status = 'disponivel'`;
+    let where = `WHERE v.status = 'disponivel'`;
 
   /* 🔍 FILTROS */
 
-  if (filtros.marca) {
-    params.push(`%${filtros.marca}%`);
-    where += ` AND v.marca ILIKE $${params.length}`;
-  }
+    if (filtros.marca) {
+      params.push(`%${filtros.marca}%`);
+      where += ` AND v.marca ILIKE $${params.length}`;
+    }
 
-  if (filtros.modelo) {
-    params.push(`%${filtros.modelo}%`);
-    where += ` AND v.modelo ILIKE $${params.length}`;
-  }
+    if (filtros.modelo) {
+      params.push(`%${filtros.modelo}%`);
+      where += ` AND v.modelo ILIKE $${params.length}`;
+    }
 
-  if (filtros.preco) {
-    params.push(Number(filtros.preco));
-    where += ` AND v.valor <= $${params.length}`;
-  }
+    if (filtros.preco) {
+      params.push(Number(filtros.preco));
+      where += ` AND v.valor <= $${params.length}`;
+    }
 
-  if (filtros.cidade) {
-    params.push(`%${filtros.cidade}%`);
-    where += ` AND l.cidade ILIKE $${params.length}`;
-  }
+    if (filtros.cidade) {
+      params.push(`%${filtros.cidade}%`);
+      where += ` AND l.cidade ILIKE $${params.length}`;
+    }
 
   /* 🔢 PAGINAÇÃO */
 
-  const page = Number(filtros.page) || 1;
-  const limit = 12;
-  const offset = (page - 1) * limit;
+    const page = Number(filtros.page) || 1;
+    const limit = 12;
+    const offset = (page - 1) * limit;
 
-  let query = `
+    let query = `
     SELECT 
       v.id,
       v.marca,
@@ -1639,90 +1639,90 @@ exports.listarPublico = async (filtros = {}) => {
     FROM veiculo v
     LEFT JOIN loja l ON l.id = v.loja_id
     ${where}
-  `;
+    `;
 
-  params.push(limit);
-  query += ` LIMIT $${params.length}`;
+    params.push(limit);
+    query += ` LIMIT $${params.length}`;
 
-  params.push(offset);
-  query += ` OFFSET $${params.length}`;
+    params.push(offset);
+    query += ` OFFSET $${params.length}`;
 
-  const result = await db.query(query, params);
+    const result = await db.query(query, params);
 
   /* 🔢 TOTAL (AGORA CORRETO) */
 
-  const totalResult = await db.query(`
+    const totalResult = await db.query(`
     SELECT COUNT(*)
     FROM veiculo v
     LEFT JOIN loja l ON l.id = v.loja_id
     ${where}
-  `, params.slice(0, -2));
+    `, params.slice(0, -2));
 
-  const total = Number(totalResult.rows[0].count);
-  const totalPages = Math.ceil(total / limit);
+    const total = Number(totalResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
 
-const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+    const BASE_URL =
+    process.env.BASE_URL ||
+    "https://mfscars-backend.onrender.com"
 
-const data = result.rows.map(v => {
+    const data = result.rows.map(v => {
 
-  let foto = v.foto || "sem-foto.jpg"
+      let foto = v.foto || "sem-foto.jpg"
 
-  if (foto.startsWith("http")) {
+      if (foto.startsWith("http")) {
+        return {
+          ...v,
+          foto
+        }
+      }
+
+      return {
+        ...v,
+        foto: `${BASE_URL}/uploads/${foto}`
+      }
+    })
+
     return {
-      ...v,
-      foto
+      data,
+      page,
+      totalPages
     }
-  }
-
-  return {
-    ...v,
-    foto: `${BASE_URL}/uploads/${foto}`
-  }
-})
-
-return {
-  data,
-  page,
-  totalPages
-}
 
 
-};
+  };
 
 
-exports.excluirDocumento = async (id) => {
-  try {
-    const r = await db.query(
-      `
+  exports.excluirDocumento = async (id) => {
+    try {
+      const r = await db.query(
+        `
       DELETE FROM veiculo_documento
       WHERE id = $1
       RETURNING *
-      `,
-      [id]
-    )
+        `,
+        [id]
+        )
 
-    if (!r.rows.length) {
-      throw new Error(
-        "Documento não encontrado"
-      )
+      if (!r.rows.length) {
+        throw new Error(
+          "Documento não encontrado"
+          )
+      }
+
+      return true
+
+    } catch (e) {
+      console.error(
+        "ERRO REPOSITORY excluirDocumento:",
+        e
+        )
+      throw e
     }
-
-    return true
-
-  } catch (e) {
-    console.error(
-      "ERRO REPOSITORY excluirDocumento:",
-      e
-    )
-    throw e
   }
-}
 
-exports.fotos = async (veiculoId, empresaId, lojaId) => {
+  exports.fotos = async (veiculoId, empresaId, lojaId) => {
 
-  let query = `
+    let query = `
     SELECT 
       id,
       veiculo_id,
@@ -1732,92 +1732,92 @@ exports.fotos = async (veiculoId, empresaId, lojaId) => {
       principal
     FROM veiculo_foto
     WHERE veiculo_id = $1
-  `
+    `
 
-  const params = [veiculoId]
+    const params = [veiculoId]
 
-  if (empresaId !== null && empresaId !== undefined) {
-    params.push(empresaId)
-    query += ` AND empresa_id = $${params.length}`
-  }
+    if (empresaId !== null && empresaId !== undefined) {
+      params.push(empresaId)
+      query += ` AND empresa_id = $${params.length}`
+    }
 
-  if (lojaId !== null && lojaId !== undefined) {
-    params.push(lojaId)
-    query += ` AND loja_id = $${params.length}`
-  }
+    if (lojaId !== null && lojaId !== undefined) {
+      params.push(lojaId)
+      query += ` AND loja_id = $${params.length}`
+    }
 
-  query += ` ORDER BY principal DESC, id ASC`
+    query += ` ORDER BY principal DESC, id ASC`
 
-  const r = await db.query(query, params)
+    const r = await db.query(query, params)
 
-  const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+    const BASE_URL =
+    process.env.BASE_URL ||
+    "https://mfscars-backend.onrender.com"
 
-return r.rows.map(f => ({
+    return r.rows.map(f => ({
 
-  ...f,
+      ...f,
 
-  url:
-    f.url?.startsWith("http")
+      url:
+      f.url?.startsWith("http")
       ? f.url
       : `${BASE_URL}/uploads/${f.url}`
-}))
-  
-}
+    }))
 
-exports.contarFotos = async (veiculoId) => {
-  const result = await db.query(
-    `SELECT COUNT(*) FROM veiculo_foto WHERE veiculo_id = $1`,
-    [veiculoId]
+  }
+
+  exports.contarFotos = async (veiculoId) => {
+    const result = await db.query(
+  `SELECT COUNT(*) FROM veiculo_foto WHERE veiculo_id = $1`,
+  [veiculoId]
   )
 
-  return Number(result.rows[0].count)
-} 
+    return Number(result.rows[0].count)
+  } 
 
-exports.buscarFotoPorId = async (id) => {
+  exports.buscarFotoPorId = async (id) => {
 
-  const result = await db.query(
+    const result = await db.query(
 
-    `
+      `
     SELECT *
     FROM veiculo_foto
     WHERE id = $1
-    `,
-    
-    [id]
-  )
+      `,
 
-  return result.rows[0]
-}
+      [id]
+      )
+
+    return result.rows[0]
+  }
 
 
-exports.definirOutraPrincipal = async (
-  veiculoId
-) => {
+  exports.definirOutraPrincipal = async (
+    veiculoId
+    ) => {
 
-  const result = await db.query(
+    const result = await db.query(
 
-    `
+      `
     SELECT id
     FROM veiculo_foto
     WHERE veiculo_id = $1
     LIMIT 1
-    `,
+      `,
 
-    [veiculoId]
-  )
+      [veiculoId]
+      )
 
-  if (!result.rows.length) return
+    if (!result.rows.length) return
 
-  await db.query(
+      await db.query(
 
-    `
+        `
     UPDATE veiculo_foto
     SET principal = true
     WHERE id = $1
-    `,
+        `,
 
-    [result.rows[0].id]
-  )
-}
+        [result.rows[0].id]
+        )
+  }

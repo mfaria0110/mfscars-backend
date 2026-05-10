@@ -1056,6 +1056,8 @@ exports.buscarPublicoPorId = async (id) => {
   const r = await db.query(`
     SELECT
       v.*,
+      v.ano_modelo as ano,
+    
       l.nome as loja,
       l.cidade,
       l.estado,

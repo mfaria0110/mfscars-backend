@@ -267,7 +267,11 @@ table {
     dados.loja_logo
       ? `
         <img
-          src="http://localhost:3001${dados.loja_logo}"
+          src="${
+            dados.loja_logo?.startsWith("http")
+              ? dados.loja_logo
+              : `https://mfscars-backend.onrender.com${dados.loja_logo}`
+          }"
           style="
             height:40px;
             object-fit:contain;

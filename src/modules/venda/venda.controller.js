@@ -189,8 +189,20 @@ exports.contratoPDF = async (req, res) => {
 
     res.send(pdf);
 
-  } catch (e) {
-    console.error("ERRO PDF:", e);
-    res.status(500).json({ erro: "Erro ao gerar PDF" });
-  }
+  } 
+
+catch (e) {
+
+  console.error(
+    "ERRO GERAR PDF:",
+    e
+  )
+
+  res.status(500).json({
+    erro:
+      e.message ||
+      String(e)
+  })
+}
+
 };

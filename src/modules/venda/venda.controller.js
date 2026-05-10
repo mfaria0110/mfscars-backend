@@ -1,6 +1,5 @@
 const service = require("./venda.service");
 const { isMaster } = require("../../shared/utils/permissao");
-const puppeteer = require("puppeteer")
 const gerarHtmlContrato = require("./contrato.template")
 
 /* ===============================

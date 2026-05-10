@@ -4,16 +4,14 @@
   "description": "",
   "main": "index.js",
 
-  "scripts": {
+"scripts": {
 
-    "test": "echo \"Error: no test specified\" && exit 1",
+  "test": "echo \"Error: no test specified\" && exit 1",
 
-    "dev": "nodemon --exec \"node --max-old-space-size=2048\" src/server.js",
+  "dev": "nodemon --exec \"node --max-old-space-size=2048\" src/server.js",
 
-    "start": "node src/server.js",
-
-    "postinstall": "npx puppeteer browsers install chrome"
-  },
+  "start": "node src/server.js"
+},
 
   "keywords": [],
   "author": "",

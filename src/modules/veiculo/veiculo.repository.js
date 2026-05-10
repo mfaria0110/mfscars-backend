@@ -167,6 +167,8 @@ exports.detalhes = async (id, empresaId, lojaId) => {
   let query = `
     SELECT
       v.*,
+      v.ano_modelo as ano,
+    
       l.nome AS loja,
       l.telefone
     FROM veiculo v
@@ -1057,7 +1059,7 @@ exports.buscarPublicoPorId = async (id) => {
     SELECT
       v.*,
       v.ano_modelo as ano,
-    
+
       l.nome as loja,
       l.cidade,
       l.estado,

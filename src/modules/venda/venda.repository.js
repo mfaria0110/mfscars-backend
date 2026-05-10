@@ -148,8 +148,18 @@ if (
   dados.veiculos_entrada &&
   dados.veiculos_entrada.length
 ) {
-  for (const entrada of dados.veiculos_entrada) {
-    await client.query(
+ for (const entrada of dados.veiculos_entrada) {
+
+  const valorEntrada =
+    Number(entrada.valor_entrada) || 0
+
+  if (valorEntrada <= 0) {
+    throw new Error(
+      "Veículo de entrada precisa ter valor"
+    )
+  }
+
+  await client.query(
       `
       INSERT INTO venda_entrada (
         venda_id,
@@ -690,6 +700,16 @@ const lojaVenda = vendaInfo.rows[0].loja_id
       dados.veiculos_entrada?.length
     ) {
       for (const entrada of dados.veiculos_entrada) {
+
+      const valorEntrada =
+        Number(entrada.valor_entrada) || 0
+
+      if (valorEntrada <= 0) {
+        throw new Error(
+          "Veículo de entrada precisa ter valor"
+        )
+      }
+              
         await client.query(
           `
           INSERT INTO venda_entrada (
@@ -731,7 +751,7 @@ const lojaVenda = vendaInfo.rows[0].loja_id
             entrada.combustivel,
             entrada.potencia,
             entrada.km,
-            entrada.valor_entrada
+            valorEntrada
           ]
         )
       }

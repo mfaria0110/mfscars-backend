@@ -1,3 +1,6 @@
+const chromium =
+  require("@sparticuz/chromium");
+
 const puppeteer =
   require("puppeteer-core");
 
@@ -9,19 +12,17 @@ async function gerarPDF(
   const browser =
     await puppeteer.launch({
 
+      args: chromium.args,
+
+      defaultViewport:
+        chromium.defaultViewport,
+
       executablePath:
-        process.env
-          .PUPPETEER_EXECUTABLE_PATH ||
-        "/usr/bin/chromium-browser",
+        await chromium.executablePath(),
 
       headless: true,
 
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu"
-      ]
+      ignoreHTTPSErrors: true
     });
 
   const page =

@@ -1,49 +1,85 @@
-const puppeteer = require("puppeteer");
+const puppeteer =
+  require("puppeteer-core");
 
-async function gerarPDF(html, dados) {
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
-  });
+async function gerarPDF(
+  html,
+  dados
+) {
 
-  const page = await browser.newPage();
+  const browser =
+    await puppeteer.launch({
 
-  await page.setContent(html, {
-    waitUntil: "networkidle0"
-  });
+      executablePath:
+        process.env
+          .PUPPETEER_EXECUTABLE_PATH ||
+        "/usr/bin/chromium-browser",
 
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
+      headless: true,
 
-    margin: {
-      top: "15mm",
-      bottom: "20mm",
-      left: "12mm",
-      right: "12mm"
-    },
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu"
+      ]
+    });
 
-    displayHeaderFooter: true,
+  const page =
+    await browser.newPage();
 
-    headerTemplate: `<div></div>`,
+  await page.setContent(
+    html,
+    {
+      waitUntil: "networkidle0"
+    }
+  );
 
-    footerTemplate: `
-      <div style="
-        width:100%;
-        font-size:9px;
-        text-align:center;
-        color:#555;
-      ">
-        ${dados.loja_nome || ""} • ${dados.loja_cidade || ""}/${dados.loja_estado || ""}
-        <br/>
-        Página <span class="pageNumber"></span> de <span class="totalPages"></span>
-      </div>
-    `
-  });
+  const pdf =
+    await page.pdf({
+
+      format: "A4",
+
+      printBackground: true,
+
+      margin: {
+        top: "15mm",
+        bottom: "20mm",
+        left: "12mm",
+        right: "12mm"
+      },
+
+      displayHeaderFooter: true,
+
+      headerTemplate:
+        `<div></div>`,
+
+      footerTemplate: `
+        <div style="
+          width:100%;
+          font-size:9px;
+          text-align:center;
+          color:#555;
+        ">
+
+          ${dados.loja_nome || ""}
+          •
+          ${dados.loja_cidade || ""}/${dados.loja_estado || ""}
+
+          <br/>
+
+          Página
+          <span class="pageNumber"></span>
+          de
+          <span class="totalPages"></span>
+
+        </div>
+      `
+    });
 
   await browser.close();
 
   return pdf;
 }
 
-module.exports = gerarPDF;
+module.exports =
+  gerarPDF;

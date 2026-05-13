@@ -82,6 +82,8 @@ router.post(
     const {
       veiculo_id,
       proprietario_id,
+      empresa_id,
+      loja_id,
       tipo
     } = req.body
 
@@ -97,7 +99,7 @@ router.post(
 
 const BASE_URL =
   process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
+  "https://api.mfscars.com.br"
 
 const arquivo =
   `${BASE_URL}/uploads/${req.file.filename}`
@@ -108,18 +110,21 @@ const arquivo =
         INSERT INTO veiculo_documento (
           veiculo_id,
           proprietario_id,
+          empresa_id,
+          loja_id,
           tipo,
           arquivo
         )
         VALUES (
-          $1,$2,$3,$4
+          $1,$2,$3,$4,$5,$6
         )
         RETURNING *
         `,
-          [
+           [
             veiculo_id,
-            proprietario_id ||
-              null,
+            proprietario_id || null,
+            empresa_id || null,
+            loja_id || null,
             tipo,
             arquivo
           ]

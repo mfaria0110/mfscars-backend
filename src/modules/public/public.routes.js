@@ -123,8 +123,8 @@ const veiculos = veiculosRes.rows.map(v => ({
     v.foto.startsWith("http")
       ? v.foto
       : v.foto
-        ? `https://mfscars-backend.onrender.com/uploads/${v.foto}`
-        : `https://mfscars-backend.onrender.com/uploads/sem-foto.jpg`
+        ? `https://api.mfscars.com.br/uploads/${v.foto}`
+        : `https://api.mfscars.com.br/uploads/sem-foto.jpg`
 }));
 
 
@@ -230,8 +230,8 @@ const data = r.rows.map(v => ({
     v.foto.startsWith("http")
       ? v.foto
       : v.foto
-        ? `https://mfscars-backend.onrender.com/uploads/${v.foto}`
-        : `https://mfscars-backend.onrender.com/uploads/sem-foto.jpg`
+        ? `https://api.mfscars.com.br/uploads/${v.foto}`
+        : `https://api.mfscars.com.br/uploads/sem-foto.jpg`
 }));
 
     res.json(data);

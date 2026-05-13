@@ -36,23 +36,21 @@ const catalogoRoutes = require("./modules/catalogo/catalogo.routes")
 
 const veiculoProprietarioRoutes = require("./modules/veiculo/veiculo.proprietario.routes")
 const veiculoDocumentoRoutes = require("./modules/veiculo/veiculo.documento.routes")
+const billingRoutes =
+  require("./modules/billing/billing.routes")
 
 /* =========================
    MIDDLEWARES GLOBAIS
 ========================= */
 app.use(cors({
-  origin: true,
+  origin: [
+    "https://mfscars.com.br",
+    "https://app.mfscars.com.br"
+  ],
   credentials: true
 }))
 
 app.use(express.json())
-
-/* =========================
-   🌍 PUBLIC
-========================= */
-app.use("/public", express.static(
-  path.join(__dirname, "../../public")
-))
 
 /* =========================
    ARQUIVOS ESTÁTICOS
@@ -69,10 +67,6 @@ app.use("/uploads", express.static(
 
 app.use("/assets", express.static(
   path.join(__dirname, "../assets")
-))
-
-app.use("/pages", express.static(
-  path.join(__dirname, "../../frontend/pages")
 ))
 
 /* =========================
@@ -95,16 +89,9 @@ app.use("/catalogos", catalogoRoutes)
 app.use("/veiculo-proprietario", veiculoProprietarioRoutes)
 app.use("/veiculo-documento", veiculoDocumentoRoutes)
 
+app.use("/billing", billingRoutes)
+
 app.use("/menus", require("./modules/menu/menu.routes"))
-
-
-app.use(express.json());
-/* =========================
-   FRONTEND
-========================= */
-app.use(express.static(
-  path.join(__dirname, "../../frontend")
-))
 
 /* =========================
    ROTA RAIZ (TESTE)
@@ -144,5 +131,5 @@ server.keepAliveTimeout = 65000
 server.headersTimeout = 66000
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`)
+  console.log(`🚀 API MFS Cars rodando na porta ${PORT}`)
 })

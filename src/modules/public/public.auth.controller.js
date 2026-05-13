@@ -135,59 +135,84 @@ exports.cadastro = async (req, res) => {
        🏪 LOJA PADRÃO
     ============================== */
     const lojaRes = await client.query(`
-      INSERT INTO loja (
-        nome,
-        empresa_id,
-        cidade,
-        estado,
-        telefone,
-        cnpj,
-        status
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,'ATIVO')
+INSERT INTO loja (
+  nome,
+  empresa_id,
+  cidade,
+  estado,
+  telefone,
+  email,
+  cnpj,
+  status
+)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,'ATIVO')
       RETURNING id
-    `, [
-      nome,
-      empresa_id,
-      cidade,
-      estado,
-      telefone,
-      cnpjLimpo
-    ]);
+    `, 
+[
+  nome,
+  empresa_id,
+  cidade,
+  estado,
+  telefone,
+  email,
+  cnpjLimpo
+]
+    
+    );
 
     const loja_id = lojaRes.rows[0].id;
 
     /* ===============================
-       💳 PLANO INICIAL
-    ============================== */
-    await client.query(`
-      INSERT INTO loja_plano (
-        loja_id,
-        plano_id,
-        data_inicio,
-        status,
-        valor_pago,
-        forma_pagamento,
-        data_pagamento,
-        aviso_3_dias,
-        aviso_vencido,
-        usados,
-        criado_em
-      )
-      VALUES (
-        $1,
-        1,
-        NOW(),
-        'ativo',
-        0.00,
-        'gratis',
-        NOW(),
-        false,
-        false,
-        0,
-        NOW()
-      )
-    `, [loja_id]);
+   💳 PLANO FREE
+============================== */
+const planoRes = await client.query(`
+  SELECT id
+  FROM plano
+  WHERE UPPER(nome) = 'FREE'
+  AND ativo = true
+  LIMIT 1
+`);
+
+if (!planoRes.rows.length) {
+  throw new Error(
+    "Plano FREE não encontrado"
+  );
+}
+
+const plano_id =
+  planoRes.rows[0].id;
+
+await client.query(`
+  INSERT INTO loja_plano (
+    loja_id,
+    plano_id,
+    data_inicio,
+    status,
+    valor_pago,
+    forma_pagamento,
+    data_pagamento,
+    aviso_3_dias,
+    aviso_vencido,
+    usados,
+    criado_em
+  )
+  VALUES (
+    $1,
+    $2,
+    NOW(),
+    'ativo',
+    0.00,
+    'gratis',
+    NOW(),
+    false,
+    false,
+    0,
+    NOW()
+  )
+`, [
+  loja_id,
+  plano_id
+]);
 
     /* ===============================
        🔗 RELAÇÃO USUÁRIO-LOJA (opcional)

@@ -4,6 +4,10 @@ const {
   withTransaction
 } = require("../../shared/database/transaction");
 
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://api.mfscars.com.br"
+
 function normalizarFoto(foto) {
 
   if (
@@ -11,12 +15,16 @@ function normalizarFoto(foto) {
     foto === "null" ||
     foto === "undefined"
   ) {
-
-    return "https://mfscars-backend.onrender.com/uploads/sem-foto.jpg"
+    return `${BASE_URL}/uploads/sem-foto.jpg`
   }
 
-  return foto
+  if (foto.startsWith("http")) {
+    return foto.replace("http://", "https://")
+  }
+
+  return `${BASE_URL}/uploads/${foto}`
 }
+
 
 exports.listar = async (filtros = {}) => {
 
@@ -204,11 +212,6 @@ exports.detalhes = async (id, empresaId, lojaId) => {
   /* ===============================
      FOTOS (SEM BLOQUEIO)
   ============================== */
-
-  const BASE_URL =
-  process.env.BASE_URL ||
-  "https://mfscars-backend.onrender.com"
-
   const fotos = await db.query(`
     SELECT 
       id,
@@ -339,8 +342,6 @@ exports.listar = async (filtros = {}) => {
   };
 }
 
-
-
 exports.criar = async (empresaId, lojaId, dados) => {
 
   const resultado = await withTransaction(async (client) => {
@@ -469,22 +470,26 @@ exports.criar = async (empresaId, lojaId, dados) => {
     ) {
     await client.query(
       `
-    INSERT INTO veiculo_proprietario (
-      veiculo_id,
-      nome,
-      cpf,
-      telefone,
-      email,
-      endereco,
-      cidade,
-      estado
-    )
+INSERT INTO veiculo_proprietario (
+  veiculo_id,
+  empresa_id,
+  loja_id,
+  nome,
+  cpf,
+  telefone,
+  email,
+  endereco,
+  cidade,
+  estado
+)
     VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
     )
       `,
       [
         veiculoId,
+        empresaId,
+        lojaId,
         dados.proprietario_nome || null,
         dados.proprietario_cpf || null,
         dados.proprietario_telefone || null,
@@ -505,16 +510,37 @@ if (opcionais.length) {
   const placeholders = [];
 
   opcionais.forEach((op, index) => {
-    const pos = index * 2;
-    placeholders.push(`($${pos + 1}, $${pos + 2})`);
-    valores.push(veiculoId, parseInt(op));
+
+    const pos = index * 4
+
+    placeholders.push(`
+    (
+      $${pos + 1},
+      $${pos + 2},
+      $${pos + 3},
+      $${pos + 4}
+    )
+    `)
+
+    valores.push(
+      veiculoId,
+      empresaId,
+      lojaId,
+      parseInt(op)
+    )
+
   });
 
   await client.query(`
-        INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
-        VALUES ${placeholders.join(",")}
-  `, valores);
-}
+      INSERT INTO veiculo_opcional (
+        veiculo_id,
+        empresa_id,
+        loja_id,
+        opcional_id
+      )
+      VALUES ${placeholders.join(",")}
+        `, valores);
+      }
 
     /* ===============================
        📈 INCREMENTAR USO
@@ -573,9 +599,17 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
     const aceita_troca = dados.aceita_troca
     const licenciado = dados.licenciado
 
-    const placaFinal = placa
-    ? placa.replace(/\W/g, '').toUpperCase()
-    : null
+const placaFormatada = placa
+? placa.replace(/\W/g, '').toUpperCase()
+: null
+
+const finalPlaca = placaFormatada
+? parseInt(
+    placaFormatada
+      .replace(/\D/g, '')
+      .slice(-1)
+  )
+: null
 
     const aceita_troca_bool =
     aceita_troca === true || aceita_troca === "true"
@@ -590,24 +624,25 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
     const kmVal = parseInt(quilometragem) || null
     const valorVal = Number(valor) || 0
 
-    let valores = [
-      marca,
-      modelo,
-      versao,
-      anoVal,
-      kmVal,
-      valorVal,
-      combustivel,
-      cambio,
-      carroceria,
-      cor,
-      placaFinal,
-      renavam,
-      descricao,
-      aceita_troca_bool,
-      licenciado_bool,
-      id
-    ]
+let valores = [
+  marca,
+  modelo,
+  versao,
+  anoVal,
+  kmVal,
+  valorVal,
+  combustivel,
+  cambio,
+  carroceria,
+  cor,
+  placaFormatada,
+  finalPlaca,
+  renavam,
+  descricao,
+  aceita_troca_bool,
+  licenciado_bool,
+  id
+]
 
     let query = `
       UPDATE veiculo SET
@@ -622,12 +657,13 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
         carroceria=$9,
         cor=$10,
         placa=$11,
-        renavam=$12,
-        descricao=$13,
-        aceita_troca=$14,
-        licenciado=$15
-      WHERE id=$16
-    `
+        final_placa=$12,
+        renavam=$13,
+        descricao=$14,
+        aceita_troca=$15,
+        licenciado=$16
+        WHERE id=$17
+        `
 
     if (empresaId !== null && empresaId !== undefined) {
       valores.push(empresaId)
@@ -670,6 +706,8 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
         `
     INSERT INTO veiculo_proprietario (
       veiculo_id,
+      empresa_Id,
+      loja_Id,
       nome,
       cpf,
       telefone,
@@ -679,11 +717,14 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
       estado
     )
     VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
     )
         `,
+
         [
           id,
+          empresaId,
+          lojaId,
           dados.proprietario_nome || null,
           dados.proprietario_cpf || null,
           dados.proprietario_telefone || null,
@@ -692,6 +733,7 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
           dados.proprietario_cidade || null,
           dados.proprietario_estado || null
         ]
+
         )
   }
 
@@ -709,13 +751,34 @@ exports.atualizar = async (id, empresaId, lojaId, dados) => {
       const placeholders = []
 
       dados.opcionais.forEach((op, index) => {
-        const pos = index * 2
-        placeholders.push(`($${pos + 1}, $${pos + 2})`)
-        valores.push(id, parseInt(op))
+
+      const pos = index * 4
+
+      placeholders.push(`
+      (
+        $${pos + 1},
+        $${pos + 2},
+        $${pos + 3},
+        $${pos + 4}
+      )
+      `)
+
+      valores.push(
+        id,
+        empresaId,
+        lojaId,
+        parseInt(op)
+      )
+
       })
 
       await client.query(`
-          INSERT INTO veiculo_opcional (veiculo_id, opcional_id)
+          INSERT INTO veiculo_opcional (
+  veiculo_id,
+  empresa_id,
+  loja_id,
+  opcional_id
+)
           VALUES ${placeholders.join(",")}
       `, valores)
     }

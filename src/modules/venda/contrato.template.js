@@ -56,6 +56,10 @@ function formatCEP(valor) {
   )
 }
 
+const BASE_URL =
+  process.env.BASE_URL ||
+  "https://api.mfscars.com.br"
+
 module.exports = function gerarContrato(
   dados
 ) {
@@ -270,7 +274,7 @@ table {
           src="${
             dados.loja_logo?.startsWith("http")
               ? dados.loja_logo
-              : `https://mfscars-backend.onrender.com${dados.loja_logo}`
+              : `${BASE_URL}${dados.loja_logo}`
           }"
           style="
             height:40px;

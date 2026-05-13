@@ -9,7 +9,7 @@ const pool = new Pool({
     rejectUnauthorized: false
   },
 
-  max: 20,
+  max: 15,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000
 })

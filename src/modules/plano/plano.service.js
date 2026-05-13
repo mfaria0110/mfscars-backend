@@ -2,7 +2,7 @@ const db =
   require("../../shared/database/db")
 
 /* =========================================
-   BUSCAR PLANO ATIVO
+   BUSCAR PLANO ATIVO- v1
 ========================================= */
 
 async function getPlanoAtivo(

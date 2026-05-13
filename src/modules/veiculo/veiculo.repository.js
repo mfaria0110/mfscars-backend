@@ -413,17 +413,8 @@ exports.criar = async (empresaId, lojaId, dados) => {
        🔒 LOCK + VALIDAR PLANO
     ============================== */
 
-    console.log(
-      "🚨 CHAMOU VALIDAR PLANO"
-    )
-
     await planoService.validarPlanoAtivo(
       client,
-      lojaId
-    )
-
-    console.log(
-      "🔥 VALIDANDO PLANO:",
       lojaId
     )
 

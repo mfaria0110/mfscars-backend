@@ -22,7 +22,6 @@ async function getPlanoAtivo(
         ON p.id = lp.plano_id
       WHERE
         lp.loja_id = $1
-        AND lp.status = 'ativo'
       ORDER BY lp.id DESC
       LIMIT 1
     `, [lojaId])

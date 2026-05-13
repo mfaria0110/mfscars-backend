@@ -143,3 +143,61 @@ exports.assinar = async (req, res) => {
     })
   }
 }
+
+exports.webhook = async (
+  req,
+  res
+) => {
+
+  try {
+
+    console.log(
+      "🔥 WEBHOOK MP:",
+      JSON.stringify(req.body)
+    )
+
+    const {
+      type,
+      data
+    } = req.body
+
+    /* =========================
+       ASSINATURA
+    ========================= */
+
+    if (
+      type === "subscription_preapproval"
+    ) {
+
+      const subscriptionId =
+        data.id
+
+      console.log(
+        "📦 Assinatura:",
+        subscriptionId
+      )
+
+      await db.query(`
+        UPDATE loja_plano
+        SET
+          status = 'ativo'
+        WHERE subscription_id = $1
+      `, [subscriptionId])
+
+      console.log(
+        "✅ Plano ativado"
+      )
+    }
+
+    res.sendStatus(200)
+
+  } catch (e) {
+
+    console.error(
+      "❌ ERRO WEBHOOK:",
+      e
+    )
+
+    res.sendStatus(500)
+  }
+}

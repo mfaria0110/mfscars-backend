@@ -15,4 +15,9 @@ router.post(
   controller.assinar
 )
 
+router.post(
+  "/webhook",
+  controller.webhook
+)
+
 module.exports = router

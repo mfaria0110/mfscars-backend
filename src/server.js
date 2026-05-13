@@ -6,6 +6,13 @@ const path = require("path")
 const fs = require("fs")
 const http = require("http") // 🔥 NOVO
 
+const cron =
+  require("node-cron")
+
+const {
+  verificarPlanos
+} = require("./jobs/verificarPlanos.job")
+
 const app = express()
 
 /* =========================
@@ -129,6 +136,26 @@ server.maxConnections = 1000
 /* 🔥 TIMEOUT AJUSTADO */
 server.keepAliveTimeout = 65000
 server.headersTimeout = 66000
+
+/* =========================
+   JOBS SaaS
+========================= */
+
+/*
+  TODO DIA ÀS 02:00
+*/
+cron.schedule(
+  /*"0 2 * * *",*/
+  * * * * *
+  async () => {
+
+    console.log(
+      "⏰ Executando JOB SaaS..."
+    )
+
+    await verificarPlanos()
+  }
+)
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 API MFS Cars rodando na porta ${PORT}`)

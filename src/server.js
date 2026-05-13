@@ -145,8 +145,7 @@ server.headersTimeout = 66000
   TODO DIA ÀS 02:00
 */
 cron.schedule(
-  /*"0 2 * * *",*/
-  "* * * * *",
+  "0 2 * * *",
   async () => {
 
     console.log(

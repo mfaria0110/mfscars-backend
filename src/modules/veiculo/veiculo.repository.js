@@ -448,7 +448,7 @@ exports.criar = async (empresaId, lojaId, dados) => {
 
   const veiculoId = r.rows[0].id;
 
-    /* ===============================
+  /* ===============================
    PROPRIETÁRIO
 ============================== */
 

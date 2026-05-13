@@ -1,4 +1,8 @@
-const db = require("../../shared/database/db");
+const db =
+  require("../../shared/database/db")
+
+const planoService =
+  require("../plano/plano.service")
 
 const {
   withTransaction
@@ -24,7 +28,6 @@ function normalizarFoto(foto) {
 
   return `${BASE_URL}/uploads/${foto}`
 }
-
 
 exports.listar = async (filtros = {}) => {
 
@@ -110,7 +113,6 @@ exports.listar = async (filtros = {}) => {
   };
 }
 
-
 exports.marcas = async () => {
 
   try {
@@ -129,7 +131,6 @@ exports.marcas = async () => {
   }
 
 };
-
 
 exports.modelos = async (marcaId) => {
 
@@ -157,7 +158,6 @@ exports.modelos = async (marcaId) => {
   }
 
 };
-
 
 exports.opcionais = async ()=>{
 
@@ -412,28 +412,16 @@ exports.criar = async (empresaId, lojaId, dados) => {
     /* ===============================
        🔒 LOCK + VALIDAR PLANO
     ============================== */
+    await planoService.validarPlanoAtivo(
+      client,
+      lojaId
+    )
 
-  const planoRes = await client.query(`
-  SELECT lp.usados, p.limite_veiculos
-  FROM loja_plano lp
-  JOIN plano p ON p.id = lp.plano_id
-  WHERE lp.loja_id = $1
-  AND lp.status = 'ativo'
-  ORDER BY lp.data_inicio DESC
-  LIMIT 1
-  FOR UPDATE
-  `, [lojaId]);
-
-  if (!planoRes.rows.length) {
-    throw new Error("Nenhum plano ativo encontrado");
-  }
-
-  const plano = planoRes.rows[0];
-
-  if (plano.usados >= plano.limite_veiculos) {
-    throw new Error("Limite do plano atingido. Faça upgrade.");
-  }
-
+    await planoService.validarLimiteVeiculos(
+      client,
+      lojaId
+    )
+    
     /* ===============================
        🚗 INSERIR VEÍCULO
     ============================== */
@@ -545,13 +533,11 @@ if (opcionais.length) {
     /* ===============================
        📈 INCREMENTAR USO
     ============================== */
+await planoService.consumirVeiculo(
+  client,
+  lojaId
+)
 
-await client.query(`
-      UPDATE loja_plano
-      SET usados = usados + 1
-      WHERE loja_id = $1
-      AND status = 'ativo'
-`, [lojaId]);
 
     /* ===============================
        📜 LOG
@@ -577,7 +563,6 @@ if (dashboardCache.cache) {
 
 return resultado;
 };
-
 
 exports.atualizar = async (id, empresaId, lojaId, dados) => {
 
@@ -871,7 +856,6 @@ exports.excluir = async (id, empresaId, lojaId) => {
   })
 }
 
-
 exports.verificarDono = async (veiculoId)=>{
 
   const r = await db.query(
@@ -1114,7 +1098,6 @@ exports.buscarPublico = async (filtros = {}) => {
     data
   };
 }
-
 
 exports.buscarPublicoPorId = async (id) => {
 
@@ -1359,8 +1342,7 @@ exports.listarPublico = async (filtros = {}) => {
   };
 }
 
-
-  exports.excluirDocumento = async (id) => {
+exports.excluirDocumento = async (id) => {
     try {
       const r = await db.query(
         `
@@ -1388,7 +1370,7 @@ exports.listarPublico = async (filtros = {}) => {
     }
   }
 
- exports.fotos = async (
+exports.fotos = async (
   veiculoId,
   empresaId,
   lojaId
@@ -1431,7 +1413,7 @@ exports.listarPublico = async (filtros = {}) => {
 }
  
 
-  exports.contarFotos = async (veiculoId) => {
+exports.contarFotos = async (veiculoId) => {
     const result = await db.query(
   `SELECT COUNT(*) FROM veiculo_foto WHERE veiculo_id = $1`,
   [veiculoId]
@@ -1440,7 +1422,7 @@ exports.listarPublico = async (filtros = {}) => {
     return Number(result.rows[0].count)
   } 
 
-  exports.buscarFotoPorId = async (id) => {
+exports.buscarFotoPorId = async (id) => {
 
     const result = await db.query(
 
@@ -1456,8 +1438,7 @@ exports.listarPublico = async (filtros = {}) => {
     return result.rows[0]
   }
 
-
-  exports.definirOutraPrincipal = async (
+exports.definirOutraPrincipal = async (
     veiculoId
     ) => {
 

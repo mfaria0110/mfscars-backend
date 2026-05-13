@@ -4,7 +4,14 @@ const db =
 const billingService =
   require("./billing.service")
 
-exports.testar = async (req, res) => {
+/* =========================================
+   TESTE
+========================================= */
+
+exports.testar = async (
+  req,
+  res
+) => {
 
   try {
 
@@ -22,12 +29,20 @@ exports.testar = async (req, res) => {
     console.error(e)
 
     res.status(500).json({
-      erro: "Erro Mercado Pago"
+      erro:
+        "Erro Mercado Pago"
     })
   }
 }
 
-exports.assinar = async (req, res) => {
+/* =========================================
+   CRIAR ASSINATURA
+========================================= */
+
+exports.assinar = async (
+  req,
+  res
+) => {
 
   try {
 
@@ -36,51 +51,70 @@ exports.assinar = async (req, res) => {
       plano_id
     } = req.body
 
-    if (!loja_id || !plano_id) {
+    if (
+      !loja_id ||
+      !plano_id
+    ) {
 
-      return res.status(400).json({
-        erro:
-          "loja_id e plano_id obrigatórios"
-      })
+      return res
+        .status(400)
+        .json({
+          erro:
+            "loja_id e plano_id obrigatórios"
+        })
     }
 
     /* =========================
        LOJA
     ========================= */
 
-    const lojaRes = await db.query(`
-      SELECT *
-      FROM loja
-      WHERE id = $1
-    `, [loja_id])
+    const lojaRes =
+      await db.query(`
+        SELECT *
+        FROM loja
+        WHERE id = $1
+      `, [loja_id])
 
-    if (!lojaRes.rows.length) {
+    if (
+      !lojaRes.rows.length
+    ) {
 
-      return res.status(404).json({
-        erro: "Loja não encontrada"
-      })
+      return res
+        .status(404)
+        .json({
+          erro:
+            "Loja não encontrada"
+        })
     }
 
-    const loja = lojaRes.rows[0]
+    const loja =
+      lojaRes.rows[0]
 
     /* =========================
        PLANO
     ========================= */
 
-    const planoRes = await db.query(`
-      SELECT *
-      FROM plano
-      WHERE id = $1
-    `, [plano_id])
+    const planoRes =
+      await db.query(`
+        SELECT *
+        FROM plano
+        WHERE id = $1
+      `, [plano_id])
 
-    if (!planoRes.rows.length) {
+    if (
+      !planoRes.rows.length
+    ) {
 
-      return res.status(404).json({
-        erro: "Plano não encontrado"
-      })
+      return res
+        .status(404)
+        .json({
+          erro:
+            "Plano não encontrado"
+        })
     }
 
-    const plano = planoRes.rows[0]
+    const plano =
+      planoRes.rows[0]
 
     /* =========================
        ASSINATURA MP
@@ -90,19 +124,23 @@ exports.assinar = async (req, res) => {
       await billingService
         .criarAssinatura({
 
-          email: loja.email,
+          email:
+            loja.email,
+
           plano
         })
 
     /* =========================
-       SALVA loja_plano
+       SALVAR loja_plano
     ========================= */
 
     await db.query(`
       INSERT INTO loja_plano (
         loja_id,
         plano_id,
-	        data_inicio,
+        data_inicio,
+        ciclo_inicio,
+        ciclo_fim,
         status,
         gateway,
         subscription_id,
@@ -113,6 +151,8 @@ exports.assinar = async (req, res) => {
         $1,
         $2,
         NOW(),
+        NOW(),
+        NOW() + INTERVAL '30 days',
         'pendente',
         'mercadopago',
         $3,
@@ -123,13 +163,17 @@ exports.assinar = async (req, res) => {
       loja_id,
       plano_id,
       assinatura.id,
-      JSON.stringify(assinatura)
+      JSON.stringify(
+        assinatura
+      )
     ])
 
     res.json({
       ok: true,
+
       init_point:
         assinatura.init_point,
+
       assinatura
     })
 
@@ -143,6 +187,10 @@ exports.assinar = async (req, res) => {
     })
   }
 }
+
+/* =========================================
+   WEBHOOK MERCADO PAGO
+========================================= */
 
 exports.webhook = async (
   req,
@@ -166,27 +214,135 @@ exports.webhook = async (
     ========================= */
 
     if (
-      type === "subscription_preapproval"
+      type ===
+      "subscription_preapproval"
     ) {
 
       const subscriptionId =
         data.id
+
+      const status =
+        data.status
 
       console.log(
         "📦 Assinatura:",
         subscriptionId
       )
 
-      await db.query(`
-        UPDATE loja_plano
-        SET
-          status = 'ativo'
-        WHERE subscription_id = $1
-      `, [subscriptionId])
-
       console.log(
-        "✅ Plano ativado"
+        "📌 STATUS:",
+        status
       )
+
+      /* =========================
+         APROVADO
+      ========================= */
+
+      if (
+        status ===
+        "authorized"
+      ) {
+
+        await db.query(`
+          UPDATE loja_plano
+          SET
+            status = 'ativo',
+            usados = 0,
+            data_pagamento = NOW(),
+            ciclo_inicio = NOW(),
+            ciclo_fim = NOW() + INTERVAL '30 days'
+          WHERE subscription_id = $1
+        `, [subscriptionId])
+
+        console.log(
+          "✅ Plano ativado"
+        )
+      }
+
+      /* =========================
+         CANCELADO
+      ========================= */
+
+      if (
+        status ===
+        "cancelled"
+      ) {
+
+        await db.query(`
+          UPDATE loja_plano
+          SET
+            status = 'cancelado',
+            data_cancelamento = NOW()
+          WHERE subscription_id = $1
+        `, [subscriptionId])
+
+        console.log(
+          "❌ Plano cancelado"
+        )
+      }
+
+      /* =========================
+         PENDENTE
+      ========================= */
+
+      if (
+        status ===
+        "pending"
+      ) {
+
+        await db.query(`
+          UPDATE loja_plano
+          SET
+            status = 'pendente'
+          WHERE subscription_id = $1
+        `, [subscriptionId])
+
+        console.log(
+          "⏳ Pagamento pendente"
+        )
+      }
+
+      /* =========================
+         PAUSADO
+      ========================= */
+
+      if (
+        status ===
+        "paused"
+      ) {
+
+        await db.query(`
+          UPDATE loja_plano
+          SET
+            status = 'pausado'
+          WHERE subscription_id = $1
+        `, [subscriptionId])
+
+        console.log(
+          "⏸️ Plano pausado"
+        )
+      }
+
+      /* =========================
+         REJEITADO
+      ========================= */
+
+      if (
+        status ===
+        "rejected"
+      ) {
+
+        await db.query(`
+          UPDATE loja_plano
+          SET
+            status = 'inadimplente'
+          WHERE subscription_id = $1
+        `, [subscriptionId])
+
+        console.log(
+          "🚫 Pagamento rejeitado"
+        )
+      }
     }
 
     res.sendStatus(200)

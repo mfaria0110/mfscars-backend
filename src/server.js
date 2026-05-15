@@ -36,7 +36,9 @@ if (!fs.existsSync(uploadsPath)) {
 app.use(cors({
   origin: [
     "https://mfscars.com.br",
+    "https://www.mfscars.com.br",
     "https://app.mfscars.com.br",
+    "https://www.app.mfscars.com.br",
     "http://localhost:5173"
   ],
   credentials: true

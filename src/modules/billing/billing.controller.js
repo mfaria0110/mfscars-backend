@@ -420,6 +420,23 @@ exports.gerarPix = async (
     const plano =
       planoRes.rows[0]
 
+/*
+  VALOR MÍNIMO PIX
+*/
+
+if (
+  Number(plano.preco) < 0.5
+) {
+
+  return res
+    .status(400)
+    .json({
+
+      erro:
+        "Plano FREE não pode ser assinado via PIX"
+    })
+}
+
 /* =========================
    PIX PENDENTE
 ========================= */
@@ -1020,7 +1037,7 @@ if (
     "🗑️ Plano antigo cancelado"
   )
 }
-    
+
 
     /*
       ATIVA PLANO

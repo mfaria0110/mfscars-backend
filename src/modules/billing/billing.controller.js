@@ -116,33 +116,42 @@ exports.assinar = async (
     const plano =
       planoRes.rows[0]
 
-    /* =========================
-       ASSINATURA EXISTENTE
-    ========================= */
+/* =========================
+   EXPIRA PENDENTES ANTIGAS
+========================= */
 
-    const assinaturaExistente =
+await db.query(`
+  UPDATE loja_plano
+  SET
+    status = 'cancelado',
+    data_cancelamento = NOW()
+  WHERE status = 'pendente'
+  AND criado_em < NOW() - INTERVAL '30 minutes'
+`)
+
+
+    /* =========================
+       ASSINATURA PENDENTE
+    ========================= */
+    const assinaturaPendente =
       await db.query(`
         SELECT *
         FROM loja_plano
         WHERE loja_id = $1
-        AND status IN (
-          'ativo',
-          'pendente'
-        )
+        AND status = 'pendente'
         ORDER BY id DESC
         LIMIT 1
       `, [loja_id])
 
     if (
-      assinaturaExistente
-        .rows.length
+      assinaturaPendente.rows.length
     ) {
 
       return res
         .status(400)
         .json({
           erro:
-            "Já existe uma assinatura ativa ou pendente"
+            "Já existe uma assinatura pendente"
         })
     }
 
@@ -199,6 +208,7 @@ exports.assinar = async (
     ])
 
     res.json({
+
       ok: true,
 
       init_point:
@@ -234,19 +244,22 @@ exports.webhook = async (
       JSON.stringify(req.body)
     )
 
-    const {
-      type,
-      data
-    } = req.body
+const {
+  type,
+  action,
+  data
+} = req.body
 
     /* =========================
        ASSINATURA
     ========================= */
 
-    if (
-      type ===
-      "subscription_preapproval"
-    ) {
+if (
+  type === "subscription_preapproval" ||
+  action === "subscription_preapproval"
+)
+
+    {
 
       const subscriptionId =
         data.id
@@ -269,24 +282,146 @@ exports.webhook = async (
       ========================= */
 
       if (
-        status ===
-        "authorized"
-      ) {
+        status === "authorized"
+      ) 
 
-        await db.query(`
-          UPDATE loja_plano
-          SET
-            status = 'ativo',
-            usados = 0,
-            data_pagamento = NOW(),
-            ciclo_inicio = NOW(),
-            ciclo_fim = NOW() + INTERVAL '30 days'
-          WHERE subscription_id = $1
-        `, [subscriptionId])
+      {
 
-        console.log(
-          "✅ Plano ativado"
-        )
+        /*
+          NOVA ASSINATURA
+        */
+
+        const novaAssinatura =
+          await db.query(`
+            SELECT *
+            FROM loja_plano
+            WHERE subscription_id = $1
+            LIMIT 1
+          `, [subscriptionId])
+
+        if (
+          novaAssinatura.rows.length
+        ) {
+
+          const nova =
+            novaAssinatura.rows[0]
+
+            /*
+              JÁ ATIVO
+            */
+
+            if (
+              nova.status === "ativo"
+            ) {
+
+              console.log(
+                "ℹ️ Assinatura já ativa"
+              )
+
+              return res.sendStatus(200)
+            }
+
+          /*
+            ASSINATURA ANTIGA
+          */
+
+          const assinaturaAntiga =
+            await db.query(`
+              SELECT *
+              FROM loja_plano
+              WHERE loja_id = $1
+              AND status = 'ativo'
+              AND id != $2
+              ORDER BY id DESC
+              LIMIT 1
+            `, [
+              nova.loja_id,
+              nova.id
+            ])
+
+          /*
+            CANCELA ANTIGA
+          */
+
+          if (
+            assinaturaAntiga.rows.length
+          ) {
+
+            const antiga =
+              assinaturaAntiga.rows[0]
+
+            /*
+              CANCELA MP ANTIGO
+            */
+
+            if (
+              antiga.subscription_id
+            ) {
+
+              try {
+
+                await billingService
+                  .cancelarAssinatura(
+                    antiga.subscription_id
+                  )
+
+              } catch (e) {
+
+                console.error(
+                  "Erro cancelando assinatura antiga MP:",
+                  e
+                )
+              }
+            }
+
+            /*
+              CANCELA LOCAL
+            */
+
+            await db.query(`
+              UPDATE loja_plano
+              SET
+                status = 'cancelado',
+                data_cancelamento = NOW()
+              WHERE id = $1
+            `, [antiga.id])
+          }
+
+          /*
+            ATIVA NOVA
+          */
+
+          await db.query(`
+            UPDATE loja_plano
+            SET
+              status = 'ativo',
+              usados = 0,
+              data_pagamento = NOW(),
+              ciclo_inicio = NOW(),
+              ciclo_fim = NOW() + INTERVAL '30 days'
+            WHERE subscription_id = $1
+          `, [subscriptionId])
+
+          console.log(
+            "✅ Novo plano ativado"
+          )
+
+          console.log(
+            "🏢 Loja:",
+            nova.loja_id
+          )
+
+          console.log(
+            "📦 Plano:",
+            nova.plano_id
+          )
+
+          console.log(
+            "💳 Subscription:",
+            subscriptionId
+          )
+
+        }
       }
 
       /* =========================
@@ -294,8 +429,8 @@ exports.webhook = async (
       ========================= */
 
       if (
-        status ===
-        "cancelled"
+        status === "cancelled" ||
+        status === "canceled"
       ) {
 
         await db.query(`
@@ -316,8 +451,7 @@ exports.webhook = async (
       ========================= */
 
       if (
-        status ===
-        "pending"
+        status === "pending"
       ) {
 
         await db.query(`
@@ -337,8 +471,7 @@ exports.webhook = async (
       ========================= */
 
       if (
-        status ===
-        "paused"
+        status === "paused"
       ) {
 
         await db.query(`
@@ -358,8 +491,7 @@ exports.webhook = async (
       ========================= */
 
       if (
-        status ===
-        "rejected"
+        status === "rejected"
       ) {
 
         await db.query(`

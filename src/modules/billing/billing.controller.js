@@ -130,31 +130,86 @@ await db.query(`
 `)
 
 
-    /* =========================
-       ASSINATURA PENDENTE
-    ========================= */
-    const assinaturaPendente =
-      await db.query(`
-        SELECT *
-        FROM loja_plano
-        WHERE loja_id = $1
-        AND status = 'pendente'
-        ORDER BY id DESC
-        LIMIT 1
-      `, [loja_id])
+/* =========================
+   ASSINATURA PENDENTE
+========================= */
 
-    if (
-      assinaturaPendente.rows.length
-    ) {
+const assinaturaPendente =
+  await db.query(`
+    SELECT *
+    FROM loja_plano
+    WHERE loja_id = $1
+    AND status = 'pendente'
+    ORDER BY id DESC
+    LIMIT 1
+  `, [loja_id])
 
-      return res
-        .status(400)
-        .json({
-          erro:
-            "Já existe uma assinatura pendente"
-        })
-    }
+if (
+  assinaturaPendente.rows.length
+) {
 
+  const pendente =
+    assinaturaPendente.rows[0]
+
+  /*
+    TEMPO PENDENTE
+  */
+
+  const criadoEm =
+    new Date(
+      pendente.criado_em
+    )
+
+  const agora =
+    new Date()
+
+  const diffMinutos =
+    (
+      agora - criadoEm
+    ) / 1000 / 60
+
+  /*
+    REUTILIZA CHECKOUT
+  */
+
+  if (
+    diffMinutos < 30
+  ) {
+
+    console.log(
+      "♻️ Reutilizando checkout pendente"
+    )
+
+    const webhookData =
+      pendente.webhook_data || {}
+
+    return res.json({
+
+      ok: true,
+
+      reutilizado: true,
+
+      init_point:
+        webhookData.init_point
+    })
+  }
+
+  /*
+    EXPIRA PENDENTE ANTIGA
+  */
+
+  await db.query(`
+    UPDATE loja_plano
+    SET
+      status = 'cancelado',
+      data_cancelamento = NOW()
+    WHERE id = $1
+  `, [pendente.id])
+
+  console.log(
+    "⏰ Pendente antiga cancelada"
+  )
+}
     /* =========================
        ASSINATURA MP
     ========================= */

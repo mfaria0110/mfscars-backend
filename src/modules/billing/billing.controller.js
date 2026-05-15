@@ -117,6 +117,36 @@ exports.assinar = async (
       planoRes.rows[0]
 
     /* =========================
+       ASSINATURA EXISTENTE
+    ========================= */
+
+    const assinaturaExistente =
+      await db.query(`
+        SELECT *
+        FROM loja_plano
+        WHERE loja_id = $1
+        AND status IN (
+          'ativo',
+          'pendente'
+        )
+        ORDER BY id DESC
+        LIMIT 1
+      `, [loja_id])
+
+    if (
+      assinaturaExistente
+        .rows.length
+    ) {
+
+      return res
+        .status(400)
+        .json({
+          erro:
+            "Já existe uma assinatura ativa ou pendente"
+        })
+    }
+
+    /* =========================
        ASSINATURA MP
     ========================= */
 

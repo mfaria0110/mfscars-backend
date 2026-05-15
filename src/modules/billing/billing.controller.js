@@ -423,7 +423,7 @@ const subscriptionId =
     ) {
 
       console.log(
-        "⚠️ subscription_id não encontrada"
+        "ℹ️ Payment sem preapproval_id (card validation)"
       )
 
       return res.sendStatus(200)

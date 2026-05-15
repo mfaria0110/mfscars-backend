@@ -4,7 +4,7 @@ const express = require("express")
 const cors = require("cors")
 const path = require("path")
 const fs = require("fs")
-const http = require("http") // 🔥 NOVO
+const http = require("http")
 
 const cron =
   require("node-cron")
@@ -18,132 +18,265 @@ const app = express()
 /* =========================
    GARANTIR PASTA UPLOADS
 ========================= */
-const uploadsPath = path.join(__dirname, "../uploads")
+const uploadsPath = path.join(
+  __dirname,
+  "../uploads"
+)
 
 if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true })
+  fs.mkdirSync(
+    uploadsPath,
+    { recursive: true }
+  )
 }
 
 /* =========================
-   IMPORT ROTAS
-========================= */
-const authRoutes = require("./modules/auth/auth.routes")
-const empresaRoutes = require("./modules/empresa/empresa.routes")
-const veiculoRoutes = require("./modules/veiculo/veiculo.routes")
-const vendaRoutes = require("./modules/venda/vendas.routes")
-const planoRoutes = require("./modules/plano/plano.routes")
-const permissoesRoutes = require("./modules/permissao/permissoes.routes")
-const leadsRoutes = require("./modules/lead/leads.routes")
-const dashboardRoutes = require("./modules/dashboard/dashboard.routes")
-const publicRoutes = require("./modules/public/public.routes")
-const favoritosRoutes = require("./modules/favorito/favorito.routes")
-const lojasRoutes = require("./modules/loja/lojas.routes")
-const usuarioRoutes = require("./modules/usuario/usuario.routes")
-const catalogoRoutes = require("./modules/catalogo/catalogo.routes")
-
-const veiculoProprietarioRoutes = require("./modules/veiculo/veiculo.proprietario.routes")
-const veiculoDocumentoRoutes = require("./modules/veiculo/veiculo.documento.routes")
-const billingRoutes =
-  require("./modules/billing/billing.routes")
-
-/* =========================
-   MIDDLEWARES GLOBAIS
+   CORS
 ========================= */
 app.use(cors({
   origin: [
     "https://mfscars.com.br",
-    "https://app.mfscars.com.br"
+    "https://app.mfscars.com.br",
+    "http://localhost:5173"
   ],
   credentials: true
 }))
 
+/* =========================
+   JSON
+========================= */
 app.use(express.json())
+
+/* =========================
+   LOGGER GLOBAL
+========================= */
+app.use((req, res, next) => {
+
+  console.log("=================================")
+
+  console.log(
+    `➡️ ${req.method} ${req.originalUrl}`
+  )
+
+  console.log(
+    "AUTH:",
+    req.headers.authorization
+      ? "TOKEN OK"
+      : "SEM TOKEN"
+  )
+
+  console.log(
+    "LOJA:",
+    req.headers["x-loja-id"] || "SEM LOJA"
+  )
+
+  console.log("=================================")
+
+  next()
+})
 
 /* =========================
    ARQUIVOS ESTÁTICOS
 ========================= */
-app.use("/uploads", express.static(
-  path.join(__dirname, "../uploads"),
-  {
-    maxAge: "7d",
-    etag: true,
-    dotfiles: "deny",
-    index: false
-  }
-))
+app.use(
+  "/uploads",
+  express.static(
+    path.join(
+      __dirname,
+      "../uploads"
+    ),
+    {
+      maxAge: "7d",
+      etag: true,
+      dotfiles: "deny",
+      index: false
+    }
+  )
+)
 
-app.use("/assets", express.static(
-  path.join(__dirname, "../assets")
-))
+app.use(
+  "/assets",
+  express.static(
+    path.join(
+      __dirname,
+      "../assets"
+    )
+  )
+)
+
+/* =========================
+   IMPORT ROTAS
+========================= */
+const authRoutes =
+  require("./modules/auth/auth.routes")
+
+const empresaRoutes =
+  require("./modules/empresa/empresa.routes")
+
+const veiculoRoutes =
+  require("./modules/veiculo/veiculo.routes")
+
+const vendaRoutes =
+  require("./modules/venda/vendas.routes")
+
+const planoRoutes =
+  require("./modules/plano/plano.routes")
+
+const permissoesRoutes =
+  require("./modules/permissao/permissoes.routes")
+
+const leadsRoutes =
+  require("./modules/lead/leads.routes")
+
+const dashboardRoutes =
+  require("./modules/dashboard/dashboard.routes")
+
+const publicRoutes =
+  require("./modules/public/public.routes")
+
+const favoritosRoutes =
+  require("./modules/favorito/favorito.routes")
+
+const lojasRoutes =
+  require("./modules/loja/lojas.routes")
+
+const usuarioRoutes =
+  require("./modules/usuario/usuario.routes")
+
+const catalogoRoutes =
+  require("./modules/catalogo/catalogo.routes")
+
+const veiculoProprietarioRoutes =
+  require("./modules/veiculo/veiculo.proprietario.routes")
+
+const veiculoDocumentoRoutes =
+  require("./modules/veiculo/veiculo.documento.routes")
+
+const billingRoutes =
+  require("./modules/billing/billing.routes")
+
+const menuRoutes =
+  require("./modules/menu/menu.routes")
 
 /* =========================
    ROTAS API
 ========================= */
 app.use("/auth", authRoutes)
+
 app.use("/public", publicRoutes)
 
 app.use("/empresas", empresaRoutes)
+
 app.use("/veiculos", veiculoRoutes)
+
 app.use("/vendas", vendaRoutes)
+
 app.use("/planos", planoRoutes)
+
 app.use("/permissoes", permissoesRoutes)
+
 app.use("/leads", leadsRoutes)
+
 app.use("/dashboard", dashboardRoutes)
+
 app.use("/favoritos", favoritosRoutes)
+
 app.use("/usuarios", usuarioRoutes)
+
 app.use("/lojas", lojasRoutes)
+
 app.use("/catalogos", catalogoRoutes)
-app.use("/veiculo-proprietario", veiculoProprietarioRoutes)
-app.use("/veiculo-documento", veiculoDocumentoRoutes)
+
+app.use(
+  "/veiculo-proprietario",
+  veiculoProprietarioRoutes
+)
+
+app.use(
+  "/veiculo-documento",
+  veiculoDocumentoRoutes
+)
 
 app.use("/billing", billingRoutes)
 
-app.use("/menus", require("./modules/menu/menu.routes"))
+app.use("/menus", menuRoutes)
 
 /* =========================
-   ROTA RAIZ (TESTE)
+   ROTA TESTE
 ========================= */
 app.get("/", (req, res) => {
-  res.send("API MFS Cars rodando 🚀");
-});
+
+  res.send(
+    "API MFS Cars rodando 🚀"
+  )
+})
 
 /* =========================
-   ERROS
+   404
 ========================= */
-app.use((err, req, res, next) => {
-  console.error("🔥 ERRO GLOBAL:", err)
+app.use((req, res) => {
 
-  res.status(500).json({
-    erro: "Erro interno no servidor"
+  res.status(404).json({
+    erro: "Rota não encontrada"
   })
 })
 
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
-});
+/* =========================
+   ERRO GLOBAL
+========================= */
+app.use((
+  err,
+  req,
+  res,
+  next
+) => {
+
+  console.error(
+    "🔥 ERRO GLOBAL"
+  )
+
+  console.error({
+    rota:
+      req.originalUrl,
+
+    metodo:
+      req.method,
+
+    erro:
+      err.message,
+
+    stack:
+      err.stack
+  })
+
+  res.status(500).json({
+    erro:
+      err.message ||
+      "Erro interno no servidor"
+  })
+})
 
 /* =========================
-   START (🔥 MELHORADO)
+   START SERVER
 ========================= */
-const PORT = process.env.PORT || 3001
+const PORT =
+  process.env.PORT || 3001
 
-const server = http.createServer(app)
+const server =
+  http.createServer(app)
 
-/* 🔥 AUMENTA LIMITE DE CONEXÕES */
+/* =========================
+   PERFORMANCE
+========================= */
 server.maxConnections = 1000
 
-/* 🔥 TIMEOUT AJUSTADO */
 server.keepAliveTimeout = 65000
+
 server.headersTimeout = 66000
 
 /* =========================
-   JOBS SaaS
+   JOB SaaS
 ========================= */
-
-/*
-  TODO DIA ÀS 02:00
-*/
 cron.schedule(
   "0 2 * * *",
   async () => {
@@ -156,6 +289,16 @@ cron.schedule(
   }
 )
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 API MFS Cars rodando na porta ${PORT}`)
-})
+/* =========================
+   START
+========================= */
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+
+    console.log(
+      `🚀 API MFS Cars rodando na porta ${PORT}`
+    )
+  }
+)

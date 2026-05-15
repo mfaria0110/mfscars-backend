@@ -780,6 +780,7 @@ exports.statusPix = async (
     const cobranca =
       await db.query(`
         SELECT
+
           lc.*,
 
           lp.status
@@ -790,11 +791,16 @@ exports.statusPix = async (
         LEFT JOIN loja_plano lp
           ON lp.id = lc.loja_plano_id
 
-        WHERE payment_id = $1
+        WHERE lc.payment_id = $1
+
         AND lp.loja_id = $2
 
         LIMIT 1
-      `, [payment_id, req.loja_id]
+      `,
+      [
+        payment_id,
+        req.loja_id
+      ])
 
     if (
       !cobranca.rows.length

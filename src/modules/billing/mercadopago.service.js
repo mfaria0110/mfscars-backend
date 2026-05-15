@@ -1,6 +1,7 @@
 const {
   MercadoPagoConfig,
-  PreApproval
+  PreApproval,
+  Payment
 } = require("mercadopago")
 
 /* =========================
@@ -22,6 +23,13 @@ const preApproval =
   new PreApproval(client)
 
 /* =========================
+   PAYMENT
+========================= */
+
+const payment =
+  new Payment(client)
+
+/* =========================
    CANCELAR ASSINATURA
 ========================= */
 
@@ -40,6 +48,19 @@ async function cancelarAssinatura(
 }
 
 /* =========================
+   BUSCAR PAGAMENTO
+========================= */
+
+async function buscarPagamento(
+  payment_id
+) {
+
+  return await payment.get({
+    id: payment_id
+  })
+}
+
+/* =========================
    EXPORTS
 ========================= */
 
@@ -47,5 +68,9 @@ module.exports = {
 
   preApproval,
 
-  cancelarAssinatura
+  payment,
+
+  cancelarAssinatura,
+
+  buscarPagamento
 }

@@ -1,8 +1,14 @@
 const db =
-  require("../../shared/database/db")
+  require("../../shared/database/db")  
 
 const billingService =
   require("./billing.service")
+
+const {
+  buscarPagamento
+} = require(
+  "./mercadopago.service"
+)  
 
 /* =========================================
    TESTE
@@ -168,10 +174,6 @@ if (
       agora - criadoEm
     ) / 1000 / 60
 
-  /*
-    REUTILIZA CHECKOUT
-  */
-
 /*
   REUTILIZA SOMENTE
   SE CHECKOUT FOR VÁLIDO
@@ -231,7 +233,6 @@ await db.query(`
     data_cancelamento = NOW()
   WHERE id = $1
 `, [pendente.id])
-   {
 
 /*
   PLANO DIFERENTE
@@ -239,7 +240,8 @@ await db.query(`
 
 if (
   pendente.plano_id !== plano_id
-) {
+)
+ {
 
   console.log(
     "🔄 Cancelando pendente de outro plano"
@@ -254,47 +256,16 @@ if (
   `, [pendente.id])
 }
 
-    console.log(
-      "♻️ Reutilizando checkout pendente"
-    )
-
-    const webhookData =
-      pendente.webhook_data || {}
-
-    return res.json({
-
-      ok: true,
-
-      reutilizado: true,
-
-      init_point:
-        webhookData.init_point
-    })
-  }
-
-  /*
-    EXPIRA PENDENTE ANTIGA
-  */
-
-  await db.query(`
-    UPDATE loja_plano
-    SET
-      status = 'cancelado',
-      data_cancelamento = NOW()
-    WHERE id = $1
-  `, [pendente.id])
-
-  console.log(
-    "⏰ Pendente antiga cancelada"
-  )
 }
+
     /* =========================
        ASSINATURA MP
     ========================= */
-
     const assinatura =
       await billingService
         .criarAssinatura({
+
+          loja,
 
           email:
             loja.email,
@@ -317,6 +288,7 @@ if (
         gateway,
         subscription_id,
         webhook_data,
+        valor_pago,
         criado_em
       )
       VALUES (
@@ -329,16 +301,20 @@ if (
         'mercadopago',
         $3,
         $4,
+        $5,
         NOW()
       )
-    `, [
+    `, 
+    [
       loja_id,
       plano_id,
       assinatura.id,
       JSON.stringify(
         assinatura
-      )
-    ])
+      ),
+      plano.preco
+    ]
+    )
 
     res.json({
 
@@ -383,14 +359,164 @@ const {
   data
 } = req.body
 
+/* =========================
+   PAYMENT
+========================= */
+
+if (
+  type === "payment"
+) {
+
+  const paymentId =
+    data.id
+
+  console.log(
+    "💰 PAYMENT:",
+    paymentId
+  )
+
+  /*
+    CONSULTA MP
+  */
+
+  const pagamento =
+    await buscarPagamento(
+      paymentId
+    )
+
+  console.log(
+    "📄 PAYMENT:",
+    JSON.stringify(
+      pagamento
+    )
+  )
+
+  /*
+    STATUS REAL
+  */
+
+  const status =
+    pagamento.status
+
+  console.log(
+    "📌 STATUS:",
+    status
+  )
+
+  /*
+    APROVADO
+  */
+
+  if (
+    status === "approved"
+  ) {
+
+    /*
+      BUSCA ASSINATURA
+    */
+
+const subscriptionId =
+  pagamento.preapproval_id
+
+    if (
+      !subscriptionId
+    ) {
+
+      console.log(
+        "⚠️ subscription_id não encontrada"
+      )
+
+      return res.sendStatus(200)
+    }
+
+    /*
+      NOVA ASSINATURA
+    */
+
+    const novaAssinatura =
+      await db.query(`
+        SELECT *
+        FROM loja_plano
+        WHERE subscription_id = $1
+        LIMIT 1
+      `, [subscriptionId])
+
+    if (
+      novaAssinatura.rows.length
+    ) {
+
+      const nova =
+        novaAssinatura.rows[0]
+
+      /*
+        CANCELA ANTIGA
+      */
+
+      await db.query(`
+        UPDATE loja_plano
+        SET
+          status = 'cancelado',
+          data_cancelamento = NOW()
+        WHERE loja_id = $1
+        AND status = 'ativo'
+        AND id != $2
+      `, [
+        nova.loja_id,
+        nova.id
+      ])
+
+      /*
+        ATIVA NOVA
+      */
+
+      await db.query(`
+        UPDATE loja_plano
+        SET
+          status = 'ativo',
+          data_pagamento = NOW(),
+          ciclo_inicio = NOW(),
+          ciclo_fim = NOW() + INTERVAL '30 days'
+        WHERE id = $1
+      `, [nova.id])
+
+      console.log(
+        "✅ Plano ativado via PAYMENT"
+      )
+    }
+  }
+
+  /*
+    REJEITADO
+  */
+
+  if (
+    status === "rejected"
+  ) 
+  {
+
+    await db.query(`
+      UPDATE loja_plano
+      SET
+        status = 'inadimplente'
+      WHERE subscription_id = $1
+    `, [
+      pagamento.preapproval_id
+    ])
+
+    console.log(
+      "🚫 Pagamento rejeitado"
+    )
+  }
+}
+
+
     /* =========================
        ASSINATURA
     ========================= */
-
-if (
-  type === "subscription_preapproval" ||
-  action === "subscription_preapproval"
-)
+    if (
+      type === "subscription_preapproval" ||
+      action === "subscription_preapproval"
+    )
 
     {
 
@@ -627,16 +753,18 @@ if (
         status === "rejected"
       ) {
 
-        await db.query(`
-          UPDATE loja_plano
-          SET
-            status = 'inadimplente'
-          WHERE subscription_id = $1
-        `, [subscriptionId])
+      await db.query(`
+        UPDATE loja_plano
+        SET
+          status = 'inadimplente'
+        WHERE subscription_id = $1
+      `, [
+        subscriptionId
+      ])
 
-        console.log(
-          "🚫 Pagamento rejeitado"
-        )
+      console.log(
+        "🚫 Pagamento rejeitado"
+      )
       }
     }
 

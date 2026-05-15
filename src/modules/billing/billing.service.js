@@ -9,7 +9,11 @@ const {
 ========================= */
 
 async function criarAssinatura({
+
+  loja,
+
   email,
+
   plano
 }) {
 
@@ -18,8 +22,23 @@ async function criarAssinatura({
 
       body: {
 
+        /* =========================
+           REFERÊNCIA INTERNA
+        ========================= */
+
+        external_reference:
+          `loja_${loja.id}_plano_${plano.id}`,
+
+        /* =========================
+           DESCRIÇÃO
+        ========================= */
+
         reason:
           `Plano ${plano.nome} - MFS Cars`,
+
+        /* =========================
+           RECORRÊNCIA
+        ========================= */
 
         auto_recurring: {
 
@@ -31,22 +50,37 @@ async function criarAssinatura({
           transaction_amount:
             Number(plano.preco),
 
-          currency_id: "BRL"
+          currency_id:
+            "BRL"
         },
+
+        /* =========================
+           URL RETORNO
+        ========================= */
 
         back_url:
           "https://app.mfscars.com.br/pagamento/sucesso",
 
+        /* =========================
+           WEBHOOK
+        ========================= */
+
         notification_url:
           "https://api.mfscars.com.br/billing/webhook",
 
-        external_reference:
-          String(plano.id),
+        /* =========================
+           PAGADOR
+        ========================= */
 
         payer_email:
           email,
 
-        status: "pending"
+        /* =========================
+           STATUS INICIAL
+        ========================= */
+
+        status:
+          "pending"
       }
     })
 

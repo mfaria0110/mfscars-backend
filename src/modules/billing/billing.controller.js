@@ -523,6 +523,17 @@ const subscriptionId =
       const subscriptionId =
         data.id
 
+      if (
+        action === "created"
+      ) {
+
+        console.log(
+          "ℹ️ Assinatura criada aguardando pagamento"
+        )
+
+        return res.sendStatus(200)
+      }
+
       const status =
         data.status
 

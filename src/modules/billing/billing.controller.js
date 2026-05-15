@@ -791,9 +791,10 @@ exports.statusPix = async (
           ON lp.id = lc.loja_plano_id
 
         WHERE payment_id = $1
+        AND lp.loja_id = $2
 
         LIMIT 1
-      `, [payment_id])
+      `, [payment_id, req.loja_id]
 
     if (
       !cobranca.rows.length
@@ -851,8 +852,10 @@ const {
 ========================= */
 
 if (
-  type === "payment"
-) {
+  type === "payment" ||
+  action?.startsWith("payment.")
+)
+{
 
   const paymentId =
     data.id
@@ -946,12 +949,20 @@ if (
       cobranca.rows[0]
 
     /*
-      JÁ PAGO
+      JÁ PROCESSADO
     */
 
     if (
+
       cobrancaData.status ===
-      "pago"
+        "pago" ||
+
+      cobrancaData.status ===
+        "cancelado" ||
+
+      cobrancaData.status ===
+        "expirado"
+
     ) {
 
       console.log(

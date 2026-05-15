@@ -777,30 +777,15 @@ exports.statusPix = async (
       payment_id
     } = req.params
 
-    const cobranca =
-      await db.query(`
-        SELECT
-
-          lc.*,
-
-          lp.status
-            AS plano_status
-
-        FROM loja_cobranca lc
-
-        LEFT JOIN loja_plano lp
-          ON lp.id = lc.loja_plano_id
-
-        WHERE lc.payment_id = $1
-
-        AND lp.loja_id = $2
-
-        LIMIT 1
-      `,
-      [
-        payment_id,
-        req.loja_id
-      ])
+  const cobranca =
+    await db.query(`
+      SELECT
+        *
+      FROM loja_cobranca
+      WHERE payment_id = $1
+      LIMIT 1
+    `,
+    [payment_id])
 
     if (
       !cobranca.rows.length

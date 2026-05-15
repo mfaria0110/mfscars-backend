@@ -202,7 +202,8 @@ if (
   valorValido &&
 
   possuiCheckout
-) {
+) 
+{
 
   console.log(
     "♻️ Reutilizando checkout pendente"

@@ -54,6 +54,9 @@ async function criarAssinatura({
             "BRL"
         },
 
+        start_date:
+          new Date().toISOString(),
+
         /* =========================
            URL RETORNO
         ========================= */
@@ -73,16 +76,18 @@ async function criarAssinatura({
         ========================= */
 
         payer_email:
-          email,
-
-        /* =========================
-           STATUS INICIAL
-        ========================= */
-
-        status:
-          "pending"
+          email
       }
     })
+
+  /* =========================
+     DEBUG MP
+  ========================= */
+
+  console.log(
+    "📄 PREAPPROVAL RESPONSE:",
+    JSON.stringify(response)
+  )
 
   return response
 }

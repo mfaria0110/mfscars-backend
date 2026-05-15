@@ -172,10 +172,65 @@ if (
     REUTILIZA CHECKOUT
   */
 
+/*
+  REUTILIZA SOMENTE
+  SE CHECKOUT FOR VÁLIDO
+*/
+
+const webhookData =
+  pendente.webhook_data || {}
+
+const valorValido =
+  Number(
+    pendente.valor_pago
+  ) >= 0.5
+
+const possuiCheckout =
+  Boolean(
+    webhookData?.init_point
+  )
+
 if (
+
   diffMinutos < 30 &&
-  pendente.plano_id === plano_id
+
+  pendente.plano_id === plano_id &&
+
+  valorValido &&
+
+  possuiCheckout
+) {
+
+  console.log(
+    "♻️ Reutilizando checkout pendente"
+  )
+
+  return res.json({
+
+    ok: true,
+
+    reutilizado: true,
+
+    init_point:
+      webhookData.init_point
+  })
+}
+
+/*
+  PENDENTE INVÁLIDA
+*/
+
+console.log(
+  "🗑️ Cancelando pendente inválida"
 )
+
+await db.query(`
+  UPDATE loja_plano
+  SET
+    status = 'cancelado',
+    data_cancelamento = NOW()
+  WHERE id = $1
+`, [pendente.id])
    {
 
 /*

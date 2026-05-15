@@ -133,7 +133,7 @@ await db.query(`
     status = 'cancelado',
     data_cancelamento = NOW()
   WHERE status = 'pendente'
-  AND criado_em < NOW() - INTERVAL '30 minutes'
+  AND criado_em < NOW() - INTERVAL '15 minutes'
 `)
 
 
@@ -195,7 +195,7 @@ const possuiCheckout =
 
 if (
 
-  diffMinutos < 30 &&
+  diffMinutos < 15 &&
 
   pendente.plano_id === plano_id &&
 
@@ -495,41 +495,72 @@ if (
       agora - criadoEm
     ) / 1000 / 60
 
-  /*
-    PIX AINDA VÁLIDO
-  */
 
-  if (
+/*
+  VALIDA VALOR ATUAL
+*/
 
-    diffMinutos < 30 &&
+const valorPlanoAtual =
+  Number(plano.preco)
 
-    pendente.plano_id ===
-      plano_id &&
+const valorPixPendente =
+  Number(
+    pendente.valor
+  )
 
-    pendente.copiaecola
+const mesmoValor =
+  valorPlanoAtual ===
+  valorPixPendente
 
-  ) {
+/*
+  PIX AINDA VÁLIDO
+*/
 
-    console.log(
-      "♻️ Reutilizando PIX pendente"
-    )
+if (
 
-    return res.json({
+  diffMinutos < 15 &&
 
-      ok: true,
+  pendente.plano_id ===
+    plano_id &&
 
-      reutilizado: true,
+  pendente.copiaecola &&
 
-      payment_id:
-        pendente.payment_id,
+  mesmoValor
 
-      qr_code:
-        pendente.qr_code,
+) {
 
-      copiaecola:
-        pendente.copiaecola
-    })
-  }
+  console.log(
+    "♻️ Reutilizando PIX pendente"
+  )
+
+  return res.json({
+
+    ok: true,
+
+    reutilizado: true,
+
+    payment_id:
+      pendente.payment_id,
+
+    qr_code:
+      pendente.qr_code,
+
+    copiaecola:
+      pendente.copiaecola
+  })
+}
+
+/*
+  VALOR ALTERADO
+*/
+
+if (!mesmoValor) {
+
+  console.log(
+    "💰 Valor alterado, expirando PIX antigo"
+  )
+}
+
 
   /*
     EXPIRA PIX ANTIGO
@@ -707,7 +738,7 @@ if (
 
         $7,
 
-        NOW() + INTERVAL '30 minutes',
+        NOW() + INTERVAL '15 minutes',
 
         $8
 

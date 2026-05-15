@@ -172,9 +172,32 @@ if (
     REUTILIZA CHECKOUT
   */
 
-  if (
-    diffMinutos < 30
-  ) {
+if (
+  diffMinutos < 30 &&
+  pendente.plano_id === plano_id
+)
+   {
+
+/*
+  PLANO DIFERENTE
+*/
+
+if (
+  pendente.plano_id !== plano_id
+) {
+
+  console.log(
+    "🔄 Cancelando pendente de outro plano"
+  )
+
+  await db.query(`
+    UPDATE loja_plano
+    SET
+      status = 'cancelado',
+      data_cancelamento = NOW()
+    WHERE id = $1
+  `, [pendente.id])
+}
 
     console.log(
       "♻️ Reutilizando checkout pendente"

@@ -20,4 +20,14 @@ router.post(
   controller.webhook
 )
 
+router.post(
+  "/pix",
+  controller.gerarPix
+)
+
+router.get(
+  "/status/:payment_id",
+  controller.statusPix
+)
+
 module.exports = router

@@ -1,7 +1,12 @@
 const {
+
   preApproval,
+
   cancelarAssinatura:
-    cancelarAssinaturaMP
+    cancelarAssinaturaMP,
+
+  criarPagamentoPix
+
 } = require("./mercadopago.service")
 
 /* =========================
@@ -93,6 +98,34 @@ async function criarAssinatura({
 }
 
 /* =========================
+   GERAR PIX
+========================= */
+
+async function gerarPixPlano({
+
+  loja,
+
+  plano
+
+}) {
+
+  const pagamento =
+    await criarPagamentoPix({
+
+      valor:
+        plano.preco,
+
+      email:
+        loja.email,
+
+      descricao:
+        `Plano ${plano.nome} - MFS Cars`
+    })
+
+  return pagamento
+}
+
+/* =========================
    CANCELAR ASSINATURA
 ========================= */
 
@@ -113,5 +146,7 @@ module.exports = {
 
   criarAssinatura,
 
-  cancelarAssinatura
+  cancelarAssinatura,
+
+  gerarPixPlano
 }

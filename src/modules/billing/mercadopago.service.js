@@ -70,6 +70,40 @@ async function buscarAssinatura(
 }
 
 /* =========================
+   CRIAR PIX
+========================= */
+
+async function criarPagamentoPix({
+
+  valor,
+
+  email,
+
+  descricao
+
+}) {
+
+  return await payment.create({
+
+    body: {
+
+      transaction_amount:
+        Number(valor),
+
+      description:
+        descricao,
+
+      payment_method_id:
+        "pix",
+
+      payer: {
+        email
+      }
+    }
+  })
+}
+
+/* =========================
    EXPORTS
 ========================= */
 
@@ -83,5 +117,7 @@ module.exports = {
 
   buscarPagamento,
 
-  buscarAssinatura
+  buscarAssinatura,
+
+  criarPagamentoPix
 }

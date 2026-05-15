@@ -60,6 +60,15 @@ async function buscarPagamento(
   })
 }
 
+async function buscarAssinatura(
+  subscription_id
+) {
+
+  return await preApproval.get({
+    id: subscription_id
+  })
+}
+
 /* =========================
    EXPORTS
 ========================= */
@@ -72,5 +81,7 @@ module.exports = {
 
   cancelarAssinatura,
 
-  buscarPagamento
+  buscarPagamento,
+
+  buscarAssinatura
 }

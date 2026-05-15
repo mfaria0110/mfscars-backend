@@ -5,7 +5,8 @@ const billingService =
   require("./billing.service")
 
 const {
-  buscarPagamento
+  buscarPagamento,
+  buscarAssinatura
 } = require(
   "./mercadopago.service"
 )  
@@ -534,8 +535,24 @@ const subscriptionId =
         return res.sendStatus(200)
       }
 
-      const status =
-        data.status
+/*
+  CONSULTA MP
+*/
+
+const assinaturaMp =
+  await buscarAssinatura(
+    subscriptionId
+  )
+
+console.log(
+  "📄 ASSINATURA MP:",
+  JSON.stringify(
+    assinaturaMp
+  )
+)
+
+const status =
+  assinaturaMp.status
 
       console.log(
         "📦 Assinatura:",

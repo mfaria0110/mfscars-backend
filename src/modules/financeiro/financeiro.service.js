@@ -1,5 +1,7 @@
 const db =
-  require("../../config/db")
+  require(
+    "../../shared/database/db"
+  )
 
 /* =========================
    RESUMO
@@ -13,14 +15,18 @@ async function getResumo() {
       SELECT
 
         COALESCE(
-          SUM(valor),
+          SUM(valor)
+          FILTER (
+            WHERE status = 'pago'
+          ),
           0
         ) AS faturamento_total,
 
         COALESCE(
           SUM(valor)
           FILTER (
-            WHERE DATE_TRUNC(
+            WHERE status = 'pago'
+            AND DATE_TRUNC(
               'month',
               criado_em
             ) = DATE_TRUNC(
@@ -43,8 +49,6 @@ async function getResumo() {
           ) AS pix_pendentes
 
       FROM loja_cobranca
-
-      WHERE status = 'pago'
 
     `)
 

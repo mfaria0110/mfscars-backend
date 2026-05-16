@@ -5,7 +5,9 @@ const controller =
   require("./financeiro.controller")
 
 const auth =
-  require("../../middlewares/auth")
+  require(
+    "../../shared/middlewares/auth"
+  )
 
 const router =
   express.Router()

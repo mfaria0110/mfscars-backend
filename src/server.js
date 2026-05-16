@@ -206,6 +206,11 @@ app.use(
 
 app.use("/billing", billingRoutes)
 
+app.use(
+  "/financeiro",
+  financeiroRoutes
+)
+
 app.use("/menus", menuRoutes)
 
 /* =========================

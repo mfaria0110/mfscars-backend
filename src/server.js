@@ -157,6 +157,11 @@ const veiculoDocumentoRoutes =
 const billingRoutes =
   require("./modules/billing/billing.routes")
 
+const financeiroRoutes =
+  require(
+    "./modules/financeiro/financeiro.routes"
+  )
+
 const menuRoutes =
   require("./modules/menu/menu.routes")
 

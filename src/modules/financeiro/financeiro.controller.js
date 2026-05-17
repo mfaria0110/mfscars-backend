@@ -84,7 +84,29 @@ exports.cobrancas =
       ) return
 
       const data =
-        await service.getCobrancas()
+        await service.getCobrancas({
+
+          page:
+            Number(req.query.page) || 1,
+
+          limit:
+            Number(req.query.limit) || 20,
+
+          status:
+            req.query.status || null,
+
+          loja:
+            req.query.loja || null,
+
+          plano:
+            req.query.plano || null,
+
+          dataInicio:
+            req.query.dataInicio || null,
+
+          dataFim:
+            req.query.dataFim || null
+        })
 
       res.json(data)
 

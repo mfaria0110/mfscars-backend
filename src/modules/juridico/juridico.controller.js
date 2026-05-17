@@ -205,3 +205,54 @@ exports.editar =
       })
     }
   }
+
+  exports.buscar =
+  async (req, res) => {
+
+    try {
+
+      const tipo =
+        req.query.tipo
+
+      const result =
+        await db.query(`
+
+          SELECT *
+
+          FROM termo_sistema
+
+          WHERE tipo = $1
+          AND ativo = true
+
+          ORDER BY id DESC
+
+          LIMIT 1
+
+        `, [tipo])
+
+      if (!result.rows.length) {
+
+        return res.status(404).json({
+
+          erro:
+            "Termo não encontrado"
+
+        })
+      }
+
+      res.json(
+        result.rows[0]
+      )
+
+    } catch (e) {
+
+      console.error(e)
+
+      res.status(500).json({
+
+        erro:
+          "Erro ao buscar termo"
+
+      })
+    }
+  }

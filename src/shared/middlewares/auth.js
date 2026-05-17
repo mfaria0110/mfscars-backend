@@ -48,6 +48,7 @@ module.exports = (
        DADOS DO USUÁRIO
     ========================= */
     req.user = decoded
+    req.usuario = decoded
 
     /* =========================
        LOJA ATIVA

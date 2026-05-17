@@ -82,11 +82,14 @@ async function getCobrancas() {
 
       FROM loja_cobranca c
 
+      LEFT JOIN loja_plano lp
+        ON lp.id = c.loja_plano_id
+
       LEFT JOIN loja l
-        ON l.id = c.loja_id
+        ON l.id = lp.loja_id
 
       LEFT JOIN plano p
-        ON p.id = c.plano_id
+        ON p.id = lp.plano_id
 
       ORDER BY c.id DESC
 

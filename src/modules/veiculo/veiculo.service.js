@@ -350,13 +350,10 @@ exports.definirFotoPrincipal = async (
     )
   }
 
-  await repo.resetarPrincipal(
-    foto.veiculo_id
-  )
-
-  await repo.setarPrincipal(
-    fotoId
-  )
+await repo.definirPrincipal(
+  fotoId
+)
+  
 }
 
 /* ===============================

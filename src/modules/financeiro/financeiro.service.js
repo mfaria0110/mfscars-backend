@@ -242,9 +242,60 @@ async function getCobrancas(filtros = {}) {
   }
 }
 
+/* =========================
+   LOJAS
+========================= */
+
+async function getLojas() {
+
+  const result =
+    await db.query(`
+
+      SELECT
+
+        id,
+        nome
+
+      FROM loja
+
+      ORDER BY nome
+
+    `)
+
+  return result.rows
+}
+
+/* =========================
+   PLANOS
+========================= */
+
+async function getPlanos() {
+
+  const result =
+    await db.query(`
+
+      SELECT
+
+        id,
+        nome
+
+      FROM plano
+
+      ORDER BY id
+
+    `)
+
+  return result.rows
+}
+
+
 module.exports = {
 
   getResumo,
 
-  getCobrancas
+  getCobrancas,
+
+  getLojas,
+
+  getPlanos
 }

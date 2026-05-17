@@ -32,5 +32,25 @@ router.get(
   controller.cobrancas
 )
 
+/* =========================
+   LOJAS
+========================= */
+
+router.get(
+  "/lojas",
+  auth,
+  controller.lojas
+)
+
+/* =========================
+   PLANOS
+========================= */
+
+router.get(
+  "/planos",
+  auth,
+  controller.planos
+)
+
 module.exports =
-  router
+  router;

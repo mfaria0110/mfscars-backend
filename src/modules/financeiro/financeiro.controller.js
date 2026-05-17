@@ -121,3 +121,69 @@ exports.cobrancas =
       })
     }
   }
+
+  /* =========================
+   LOJAS
+========================= */
+
+exports.lojas =
+  async (req, res) => {
+
+    try {
+
+      if (
+        !validarAdmin(
+          req,
+          res
+        )
+      ) return
+
+      const data =
+        await service.getLojas()
+
+      res.json(data)
+
+    } catch (e) {
+
+      console.error(e)
+
+      res.status(500).json({
+
+        error:
+          "Erro ao carregar lojas"
+      })
+    }
+  }
+
+/* =========================
+   PLANOS
+========================= */
+
+exports.planos =
+  async (req, res) => {
+
+    try {
+
+      if (
+        !validarAdmin(
+          req,
+          res
+        )
+      ) return
+
+      const data =
+        await service.getPlanos()
+
+      res.json(data)
+
+    } catch (e) {
+
+      console.error(e)
+
+      res.status(500).json({
+
+        error:
+          "Erro ao carregar planos"
+      })
+    }
+  }

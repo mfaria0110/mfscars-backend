@@ -256,3 +256,269 @@ exports.editar =
       })
     }
   }
+
+  /* =========================
+   NOVA VERSÃO
+========================= */
+
+exports.novaVersao =
+  async (req, res) => {
+
+    try {
+
+      if(
+        !validarMaster(
+          req,
+          res
+        )
+      ) return
+
+      const id =
+        req.params.id
+
+      const atual =
+        await db.query(`
+
+          SELECT *
+
+          FROM termo_sistema
+
+          WHERE id = $1
+
+        `, [id])
+
+      if(
+        !atual.rows.length
+      ){
+
+        return res.status(404).json({
+
+          erro:
+            "Termo não encontrado"
+
+        })
+      }
+
+      const termo =
+        atual.rows[0]
+
+      const novaVersao =
+        String(
+
+          Number(
+            termo.versao
+          ) + 0.1
+
+        )
+
+      const result =
+        await db.query(`
+
+          INSERT INTO
+            termo_sistema (
+
+              tipo,
+              versao,
+              titulo,
+              conteudo,
+              ativo
+
+            )
+
+          VALUES (
+
+            $1,
+            $2,
+            $3,
+            $4,
+            false
+
+          )
+
+          RETURNING *
+
+        `, [
+
+          termo.tipo,
+
+          novaVersao,
+
+          termo.titulo,
+
+          termo.conteudo
+
+        ])
+
+      res.json(
+        result.rows[0]
+      )
+
+    } catch(e){
+
+      console.error(e)
+
+      res.status(500).json({
+
+        erro:
+          "Erro ao criar versão"
+
+      })
+    }
+  }
+
+  /* =========================
+   VERIFICAR REACEITE
+========================= */
+
+exports.verificarAceite =
+  async (req, res) => {
+
+    try {
+
+      const usuarioId =
+        req.usuario.id
+
+      /* =========================
+         VERSÕES ATIVAS
+      ========================= */
+
+      const termosAtivos =
+        await db.query(`
+
+          SELECT
+
+            tipo,
+            versao
+
+          FROM termo_sistema
+
+          WHERE ativo = true
+
+        `)
+
+      /* =========================
+         ACEITES USUÁRIO
+      ========================= */
+
+      const aceites =
+        await db.query(`
+
+          SELECT
+
+            versao
+
+          FROM usuario_aceite_termo
+
+          WHERE usuario_id = $1
+
+          ORDER BY id DESC
+
+        `, [usuarioId])
+
+      const versoesAceitas =
+        aceites.rows.map(
+          a => a.versao
+        )
+
+      /* =========================
+         PRECISA REACEITE?
+      ========================= */
+
+      const pendentes =
+        termosAtivos.rows.filter(
+
+          t =>
+
+            !versoesAceitas.includes(
+              t.versao
+            )
+
+        )
+
+      res.json({
+
+        precisaAceite:
+          pendentes.length > 0,
+
+        pendentes
+
+      })
+
+    } catch(e){
+
+      console.error(e)
+
+      res.status(500).json({
+
+        erro:
+          "Erro ao verificar aceite"
+
+      })
+    }
+  }
+
+  /* =========================
+   ACEITAR TERMOS
+========================= */
+
+exports.aceitar =
+  async (req, res) => {
+
+    try {
+
+      const usuarioId =
+        req.usuario.id
+
+      const {
+
+        versao
+
+      } = req.body
+
+      await db.query(`
+
+        INSERT INTO
+          usuario_aceite_termo (
+
+            usuario_id,
+            versao,
+            ip
+
+          )
+
+        VALUES (
+
+          $1,
+          $2,
+          $3
+
+        )
+
+      `, [
+
+        usuarioId,
+
+        versao,
+
+        req.ip
+
+      ])
+
+      res.json({
+
+        ok: true
+
+      })
+
+    } catch(e){
+
+      console.error(e)
+
+      res.status(500).json({
+
+        erro:
+          "Erro ao aceitar termo"
+
+      })
+    }
+  }

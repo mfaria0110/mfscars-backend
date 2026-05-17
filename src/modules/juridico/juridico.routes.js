@@ -19,6 +19,24 @@ router.post(
   controller.criar
 )
 
+router.post(
+  "/nova-versao/:id",
+  auth,
+  controller.novaVersao
+)
+
+router.get(
+  "/verificar-aceite",
+  auth,
+  controller.verificarAceite
+)
+
+router.post(
+  "/aceitar",
+  auth,
+  controller.aceitar
+)
+
 router.put(
   "/:id",
   auth,

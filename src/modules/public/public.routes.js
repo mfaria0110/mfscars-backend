@@ -8,6 +8,9 @@ const publicAuth = require("./public.auth.controller");
 const publicController = require("./public.controller");
 const db = require("../../shared/database/db");
 
+const termoController =
+  require("./termo.controller")
+
 /* ===============================
    🔐 AUTH PUBLICO
 ================================ */
@@ -291,5 +294,10 @@ router.post("/lead", async (req, res) => {
     res.status(500).json({ erro: "Erro ao salvar lead" });
   }
 });
+
+router.get(
+  "/termos",
+  termoController.buscar
+)
 
 module.exports = router;

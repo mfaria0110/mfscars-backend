@@ -165,6 +165,11 @@ const financeiroRoutes =
 const menuRoutes =
   require("./modules/menu/menu.routes")
 
+const juridicoRoutes =
+  require(
+    "./modules/juridico/juridico.routes"
+  )
+
 /* =========================
    ROTAS API
 ========================= */
@@ -212,6 +217,11 @@ app.use(
 )
 
 app.use("/menus", menuRoutes)
+
+app.use(
+  "/juridico",
+  juridicoRoutes
+)
 
 /* =========================
    ROTA TESTE

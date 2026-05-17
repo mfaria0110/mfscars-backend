@@ -310,9 +310,28 @@ exports.cadastro = async (req, res) => {
 
   try {
 
-    const { nome, email, senha } = req.body
+    const {
+
+  nome,
+  email,
+  senha,
+
+  aceitou_termos,
+  versao_termos
+
+} = req.body
 
     const senhaHash = await bcrypt.hash(senha, 10)
+
+      if (!aceitou_termos) {
+
+        return res.status(400).json({
+
+          erro:
+            "Aceite dos termos obrigatório"
+
+        })
+      }
 
     await client.query("BEGIN")
 
@@ -344,6 +363,35 @@ exports.cadastro = async (req, res) => {
       INSERT INTO usuario_loja (usuario_id, loja_id, perfil, ativo)
       VALUES ($1,$2,'admin',true)
     `, [usuario_id, loja_id])
+
+    await client.query(`
+
+  INSERT INTO
+    usuario_aceite_termo (
+
+      usuario_id,
+      versao,
+      ip
+
+    )
+
+  VALUES (
+
+    $1,
+    $2,
+    $3
+
+  )
+
+`, [
+
+  usuario_id,
+
+  versao_termos || "1.0",
+
+  req.ip
+
+])
 
     await client.query("COMMIT")
 

@@ -13,9 +13,48 @@ const storage = multer.diskStorage({
   }
 })
 
-const upload = multer({ storage })
+const upload = multer({
 
-exports.uploadMiddleware = upload.array("foto", 6)
+  storage,
+
+  fileFilter: (
+    req,
+    file,
+    cb
+  ) => {
+
+    const permitidos = [
+
+      "image/jpeg",
+
+      "image/jpg",
+
+      "image/png",
+
+      "image/webp"
+
+    ]
+
+    if (
+      permitidos.includes(
+        file.mimetype
+      )
+    ) {
+
+      cb(null, true)
+
+    } else {
+
+      cb(
+        new Error(
+          "Formato inválido. Use JPG, PNG ou WEBP."
+        )
+      )
+    }
+  }
+})
+
+exports.uploadMiddleware = upload.array("foto", 10)
 
 /* ===============================
    LISTAR VEÍCULOS

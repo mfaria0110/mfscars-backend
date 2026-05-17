@@ -8,8 +8,10 @@ const publicAuth = require("./public.auth.controller");
 const publicController = require("./public.controller");
 const db = require("../../shared/database/db");
 
-const termoController =
-  require("./termo.controller")
+const juridicoController =
+  require(
+    "../juridico/juridico.controller"
+  )
 
 /* ===============================
    🔐 AUTH PUBLICO
@@ -297,7 +299,7 @@ router.post("/lead", async (req, res) => {
 
 router.get(
   "/termos",
-  termoController.buscar
+  juridicoController.buscar
 )
 
 module.exports = router;

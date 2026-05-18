@@ -435,14 +435,33 @@ exports.verificarAceite =
 
         )
 
+      /* =========================
+         PODE ACEITAR?
+      ========================= */
+
+      const usuario =
+        req.usuario
+
+      const podeAceitar =
+
+        usuario?.ativo &&
+        usuario?.tipo === "admin"
+
+      /* =========================
+         RESPONSE
+      ========================= */
+
       res.json({
 
         precisaAceite:
           pendentes.length > 0,
 
+        podeAceitar,
+
         pendentes
 
       })
+      
 
     } catch(e){
 

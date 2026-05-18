@@ -55,6 +55,10 @@ module.exports = async (
 
   try {
 
+    /* =========================
+       TOKEN
+    ========================= */
+
     const decoded =
       jwt.verify(
 
@@ -79,7 +83,8 @@ module.exports = async (
       const empresa =
         await db.query(`
 
-          SELECT ativo
+          SELECT
+            ativo
 
           FROM empresa
 
@@ -138,16 +143,16 @@ module.exports = async (
   } catch (e) {
 
     console.error(
-
-      "JWT ERROR:",
+      "AUTH ERROR:",
       e
-
     )
 
-    return res.status(401).json({
+    return res.status(500).json({
 
       erro:
-        "Token inválido ou expirado"
+        e.message ||
+
+        "Erro na autenticação"
 
     })
   }

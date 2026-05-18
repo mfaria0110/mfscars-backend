@@ -375,8 +375,8 @@ exports.verificarAceite =
 
     try {
 
-      const usuarioId =
-        req.usuario.id
+const lojaId =
+  req.usuario.loja_id
 
       /* =========================
          VERSÕES ATIVAS
@@ -403,17 +403,13 @@ exports.verificarAceite =
       const aceites =
         await db.query(`
 
-          SELECT
+        SELECT DISTINCT
+          versao
+        FROM usuario_aceite_termo
+        WHERE loja_id = $1
+        ORDER BY versao DESC
 
-            versao
-
-          FROM usuario_aceite_termo
-
-          WHERE usuario_id = $1
-
-          ORDER BY id DESC
-
-        `, [usuarioId])
+        `, [lojaId])
 
       const versoesAceitas =
         aceites.rows.map(

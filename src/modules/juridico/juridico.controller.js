@@ -443,7 +443,6 @@ exports.verificarAceite =
         req.usuario
 
       const podeAceitar =
-
         usuario?.ativo &&
         usuario?.tipo === "admin"
 
@@ -455,13 +454,10 @@ exports.verificarAceite =
 
         precisaAceite:
           pendentes.length > 0,
-
         podeAceitar,
-
         pendentes
 
       })
-      
 
     } catch(e){
 

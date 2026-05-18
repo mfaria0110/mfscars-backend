@@ -1,5 +1,5 @@
 const bcrypt =
-  require("bcryptjs")
+  require("bcrypt")
 
 const repository =
   require(

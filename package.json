@@ -15,7 +15,6 @@
   "dependencies": {
     "@sparticuz/chromium": "^138.0.2",
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

@@ -26,6 +26,43 @@ exports.login = async (req, res) => {
       return res.status(403).json({ erro: "Usuário inativo" });
     }
 
+    /* ===============================
+   EMPRESA DESATIVADA
+================================ */
+
+const empresaStatus =
+  await db.query(`
+
+    SELECT
+      ativo
+
+    FROM empresa
+
+    WHERE id = $1
+
+  `, [
+
+    user.empresa_id
+
+  ])
+
+if (
+
+  empresaStatus.rows.length &&
+
+  !empresaStatus.rows[0].ativo
+
+) {
+
+  return res.status(403).json({
+
+    erro:
+
+      "Empresa desativada. Entre em contato com o suporte."
+
+  })
+}
+
     const senhaValida = await bcrypt.compare(senha, user.senha);
     if (!senhaValida) {
       return res.status(401).json({ erro: "Senha inválida" });
@@ -446,6 +483,45 @@ exports.refresh = async (req, res) => {
       refreshToken,
       process.env.JWT_SECRET
     )
+
+
+    /* ===============================
+   EMPRESA DESATIVADA
+================================ */
+
+const empresaStatus =
+  await db.query(`
+
+    SELECT
+      ativo
+
+    FROM empresa
+
+    WHERE id = $1
+
+  `, [
+
+    decoded.empresa_id
+
+  ])
+
+if (
+
+  empresaStatus.rows.length &&
+
+  !empresaStatus.rows[0].ativo
+
+) {
+
+  return res.status(403).json({
+
+    erro:
+
+      "Empresa desativada"
+
+  })
+}
+
 
     const payload = {
       id: decoded.id,

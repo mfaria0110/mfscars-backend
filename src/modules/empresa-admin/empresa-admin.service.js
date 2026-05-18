@@ -6,11 +6,19 @@ const repository =
     "./empresa-admin.repository"
   )
 
+/* =========================
+   LISTAR
+========================= */
+
 exports.listar =
   async () => {
 
     return await repository.listar()
   }
+
+/* =========================
+   BUSCAR
+========================= */
 
 exports.buscar =
   async (id) => {
@@ -19,6 +27,10 @@ exports.buscar =
       id
     )
   }
+
+/* =========================
+   EDITAR
+========================= */
 
 exports.editar =
   async (
@@ -32,8 +44,13 @@ exports.editar =
     )
   }
 
+/* =========================
+   DESATIVAR
+========================= */
+
 exports.desativar =
   async ({
+
     empresaId,
     senha,
     motivo,
@@ -41,10 +58,40 @@ exports.desativar =
     usuario,
     ip,
     userAgent
+
   }) => {
 
     /* =========================
-       VALIDA SENHA MASTER
+       VALIDAÇÕES
+    ========================= */
+
+    if (!senha) {
+
+      throw new Error(
+        "Senha obrigatória"
+      )
+    }
+
+    if (!motivo) {
+
+      throw new Error(
+        "Motivo obrigatório"
+      )
+    }
+
+    if (
+      motivo.trim().length < 10
+    ) {
+
+      throw new Error(
+
+        "Motivo deve possuir pelo menos 10 caracteres"
+
+      )
+    }
+
+    /* =========================
+       VALIDA MASTER
     ========================= */
 
     const master =
@@ -52,10 +99,24 @@ exports.desativar =
         usuario.id
       )
 
+    if (!master) {
+
+      throw new Error(
+        "Usuário não encontrado"
+      )
+    }
+
+    /* =========================
+       VALIDA SENHA
+    ========================= */
+
     const senhaOk =
       await bcrypt.compare(
+
         senha,
+
         master.senha
+
       )
 
     if (!senhaOk) {
@@ -64,6 +125,29 @@ exports.desativar =
         "Senha inválida"
       )
     }
+
+    /* =========================
+       NÃO PODE DESATIVAR
+       A PRÓPRIA EMPRESA
+    ========================= */
+
+    if (
+
+      Number(empresaId) ===
+      Number(usuario.empresa_id)
+
+    ) {
+
+      throw new Error(
+
+        "Não é permitido desativar sua própria empresa"
+
+      )
+    }
+
+    /* =========================
+       DESATIVA
+    ========================= */
 
     return await repository.desativar({
 
@@ -76,6 +160,10 @@ exports.desativar =
 
     })
   }
+
+/* =========================
+   RESTAURAR
+========================= */
 
 exports.restaurar =
   async (id) => {

@@ -1,19 +1,29 @@
-const jwt = require("jsonwebtoken")
+const jwt =
+  require("jsonwebtoken")
 
-module.exports = (
+const db =
+  require("../database/db")
+
+module.exports = async (
   req,
   res,
   next
 ) => {
+
   const header =
     req.headers.authorization
 
   /* =========================
      TOKEN NÃO ENVIADO
   ========================= */
+
   if (!header) {
+
     return res.status(401).json({
-      erro: "Token não enviado"
+
+      erro:
+        "Token não enviado"
+
     })
   }
 
@@ -23,13 +33,20 @@ module.exports = (
   /* =========================
      TOKEN MAL FORMATADO
   ========================= */
+
   if (
+
     parts.length !== 2 ||
+
     parts[0] !== "Bearer"
+
   ) {
+
     return res.status(401).json({
+
       erro:
         "Token mal formatado"
+
     })
   }
 
@@ -37,45 +54,101 @@ module.exports = (
     parts[1]
 
   try {
+
     const decoded =
       jwt.verify(
+
         token,
+
         process.env.JWT_SECRET
+
       )
 
+    /* =========================
+       EMPRESA DESATIVADA
+    ========================= */
+
+    if (
+
+      decoded.empresa_id &&
+
+      !decoded.master
+
+    ) {
+
+      const empresa =
+        await db.query(`
+
+          SELECT ativo
+
+          FROM empresa
+
+          WHERE id = $1
+
+        `, [
+
+          decoded.empresa_id
+
+        ])
+
+      if (
+
+        empresa.rows.length &&
+
+        !empresa.rows[0].ativo
+
+      ) {
+
+        return res.status(403).json({
+
+          erro:
+            "Empresa desativada"
+
+        })
+      }
+    }
 
     /* =========================
-       DADOS DO USUÁRIO
+       DADOS USUÁRIO
     ========================= */
-    req.user = decoded
-    req.usuario = decoded
+
+    req.user =
+      decoded
+
+    req.usuario =
+      decoded
 
     /* =========================
        LOJA ATIVA
-       prioridade:
-       1 - header enviado pelo frontend
-       2 - loja do token
     ========================= */
+
     const lojaHeader =
       req.headers["x-loja-id"]
 
-
     req.lojaId =
+
       lojaHeader
+
         ? Number(lojaHeader)
+
         : decoded.loja_id
 
     next()
 
   } catch (e) {
+
     console.error(
+
       "JWT ERROR:",
       e
+
     )
 
     return res.status(401).json({
+
       erro:
         "Token inválido ou expirado"
+
     })
   }
 }

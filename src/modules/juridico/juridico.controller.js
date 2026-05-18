@@ -460,7 +460,6 @@ exports.verificarAceite =
   /* =========================
    ACEITAR TERMOS
 ========================= */
-
 exports.aceitar =
   async (req, res) => {
 
@@ -469,11 +468,41 @@ exports.aceitar =
       const usuarioId =
         req.usuario.id
 
+      const lojaId =
+        req.usuario.loja_id
+
       const {
-
         versao
-
       } = req.body
+
+      /* =========================
+         BUSCA NOME DA LOJA
+      ========================= */
+
+      let lojaNome = null
+
+      if (lojaId) {
+
+        const lojaRes =
+          await db.query(`
+
+            SELECT nome
+
+            FROM loja
+
+            WHERE id = $1
+
+            LIMIT 1
+
+          `, [lojaId])
+
+        lojaNome =
+          lojaRes.rows[0]?.nome || null
+      }
+
+      /* =========================
+         SALVA ACEITE
+      ========================= */
 
       await db.query(`
 
@@ -482,7 +511,9 @@ exports.aceitar =
 
             usuario_id,
             versao,
-            ip
+            ip,
+            loja_id,
+            loja_nome
 
           )
 
@@ -490,7 +521,9 @@ exports.aceitar =
 
           $1,
           $2,
-          $3
+          $3,
+          $4,
+          $5
 
         )
 
@@ -500,7 +533,11 @@ exports.aceitar =
 
         versao,
 
-        req.ip
+        req.ip,
+
+        lojaId,
+
+        lojaNome
 
       ])
 

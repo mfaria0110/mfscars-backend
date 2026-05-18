@@ -364,41 +364,33 @@ exports.cadastro = async (req, res) => {
       VALUES ($1,$2,'admin',true)
     `, [usuario_id, loja_id])
 
+
     await client.query(`
-
-  INSERT INTO
-    usuario_aceite_termo (
-
-      usuario_id,
-      versao,
-      ip
-
+    INSERT INTO usuario_aceite_termo (
+        usuario_id,
+        versao,
+        ip,
+        loja_id,
+        loja_nome
+      )
+    VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5
     )
-
-  VALUES (
-
-    $1,
-    $2,
-    $3
-
-  )
-
-`, [
-
-  usuario_id,
-
-  versao_termos || "1.0",
-
-  req.ip
-
-])
-
+  `, [
+    usuario_id,
+    versao_termos || "1.0",
+    req.ip,
+    loja_id,
+    nome
+  ])
+ 
     await client.query("COMMIT")
-
     res.json({ msg: "Conta criada com sucesso" })
-
   } catch (e) {
-
     await client.query("ROLLBACK")
     console.error(e)
     res.status(500).json({ erro: "Erro ao cadastrar" })

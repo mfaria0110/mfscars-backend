@@ -378,6 +378,24 @@ exports.verificarAceite =
       const usuario =
         req.usuario
 
+
+  /* =========================
+   MASTER IGNORA ACEITE
+  ========================= */
+
+      if (usuario?.master) {
+
+        return res.json({
+
+          precisaAceite: false,
+
+          podeAceitar: false,
+
+          pendentes: []
+
+        })
+      }
+
       let lojas = []
 
       /* =========================

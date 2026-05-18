@@ -22,30 +22,24 @@ exports.dados = async (req, res) => {
        🚗 VEÍCULOS
     ============================== */
     const veiculos = await db.query(`
-      SELECT COUNT(*)
-      FROM veiculo
-      WHERE status = 'disponivel'
-      AND loja_id = $1
-    `, [lojaId]);
+    SELECT COUNT(*) AS total
+    FROM veiculo
+    WHERE status = 'disponivel'
+    AND loja_id = $1
+    `, [lojaId])
 
-    /* ===============================
-       💰 VENDAS
-    ============================== */
     const vendas = await db.query(`
-      SELECT COUNT(*)
+      SELECT COUNT(*) AS total
       FROM venda
       WHERE status = 'FINALIZADA'
       AND loja_id = $1
-    `, [lojaId]);
+    `, [lojaId])
 
-    /* ===============================
-       📩 LEADS
-    ============================== */
     const leads = await db.query(`
-      SELECT COUNT(*)
+      SELECT COUNT(*) AS total
       FROM lead
       WHERE loja_id = $1
-    `, [lojaId]);
+    `, [lojaId])
 
     /* ===============================
        📦 PLANO

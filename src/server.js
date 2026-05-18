@@ -170,6 +170,11 @@ const juridicoRoutes =
     "./modules/juridico/juridico.routes"
   )
 
+const empresaAdminRoutes =
+  require(
+    "./modules/empresa-admin/empresa-admin.routes"
+  )
+
 /* =========================
    ROTAS API
 ========================= */
@@ -221,6 +226,11 @@ app.use("/menus", menuRoutes)
 app.use(
   "/juridico",
   juridicoRoutes
+)
+
+app.use(
+  "/empresa-admin",
+  empresaAdminRoutes
 )
 
 /* =========================

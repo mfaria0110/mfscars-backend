@@ -366,7 +366,7 @@ exports.novaVersao =
     }
   }
 
-  /* =========================
+/* =========================
    VERIFICAR REACEITE
 ========================= */
 
@@ -375,41 +375,133 @@ exports.verificarAceite =
 
     try {
 
-const lojaId =
-  req.usuario.loja_id
+      const usuario =
+        req.usuario
+
+      let lojas = []
 
       /* =========================
-         VERSÕES ATIVAS
+         MASTER
+      ========================= */
+
+      if (usuario.master) {
+
+        const result =
+          await db.query(`
+
+            SELECT id
+            FROM loja
+
+          `)
+
+        lojas =
+          result.rows.map(
+            l => l.id
+          )
+
+      /* =========================
+         ADMIN
+      ========================= */
+
+      } else if (
+        usuario.tipo === "admin"
+      ) {
+
+        const result =
+          await db.query(`
+
+            SELECT id
+            FROM loja
+            WHERE empresa_id = $1
+
+          `, [
+
+            usuario.empresa_id
+
+          ])
+
+        lojas =
+          result.rows.map(
+            l => l.id
+          )
+
+      /* =========================
+         USUÁRIO NORMAL
+      ========================= */
+
+      } else {
+
+        const result =
+          await db.query(`
+
+            SELECT loja_id
+            FROM usuario_loja
+            WHERE usuario_id = $1
+            AND ativo = true
+
+          `, [
+
+            usuario.id
+
+          ])
+
+        lojas =
+          result.rows.map(
+            l => l.loja_id
+          )
+      }
+
+      /* =========================
+         SEM LOJAS
+      ========================= */
+
+      if (!lojas.length) {
+
+        return res.json({
+
+          precisaAceite: false,
+
+          podeAceitar: false,
+
+          pendentes: []
+
+        })
+      }
+
+      /* =========================
+         TERMOS ATIVOS
       ========================= */
 
       const termosAtivos =
         await db.query(`
 
           SELECT
-
             tipo,
             versao
-
           FROM termo_sistema
-
           WHERE ativo = true
 
         `)
 
       /* =========================
-         ACEITES USUÁRIO
+         ACEITES DAS LOJAS
       ========================= */
 
       const aceites =
         await db.query(`
 
-        SELECT DISTINCT
-          versao
-        FROM usuario_aceite_termo
-        WHERE loja_id = $1
-        ORDER BY versao DESC
+          SELECT DISTINCT
+            versao
 
-        `, [lojaId])
+          FROM usuario_aceite_termo
+
+          WHERE loja_id = ANY($1)
+
+        `, [
+
+          lojas
+
+        ])
 
       const versoesAceitas =
         aceites.rows.map(
@@ -417,7 +509,7 @@ const lojaId =
         )
 
       /* =========================
-         PRECISA REACEITE?
+         PENDÊNCIAS
       ========================= */
 
       const pendentes =
@@ -432,13 +524,11 @@ const lojaId =
         )
 
       /* =========================
-         PODE ACEITAR?
+         PODE ACEITAR
       ========================= */
 
-      const usuario =
-        req.usuario
-
       const podeAceitar =
+
         usuario?.ativo &&
         usuario?.tipo === "admin"
 
@@ -450,7 +540,9 @@ const lojaId =
 
         precisaAceite:
           pendentes.length > 0,
+
         podeAceitar,
+
         pendentes
 
       })
@@ -468,7 +560,9 @@ const lojaId =
     }
   }
 
-  /* =========================
+
+
+/* =========================
    ACEITAR TERMOS
 ========================= */
 exports.aceitar =

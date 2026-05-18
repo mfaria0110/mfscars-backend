@@ -78,20 +78,21 @@ if (user.master) {
     }
 
     /* 🔐 TOKEN BASE */
-const payload = {
-  id: user.id,
-  empresa_id: user.empresa_id,
-  loja_id: null, // 🔥 PADRÃO
-  master: user.master,
-  tipo: user.tipo,
-  perfil: null,
-  permissoes: [] // 🔥 PADRÃO
-};
+    const payload = {
+      id: user.id,
+      empresa_id: user.empresa_id,
+      loja_id: null,
+      master: user.master,
+      tipo: user.tipo,
+      ativo: user.ativo,
+      perfil: null,
+      permissoes: []
+    };
 
-const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-  expiresIn: "1h",
-  issuer: "mfsCars"
-});
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+      issuer: "mfsCars"
+    });
 
     const refreshToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "7d"
@@ -243,18 +244,29 @@ if (usuario.master) {
     /* ===============================
        TOKEN FINAL
     ============================== */
-    const payload = {
-      id: usuario.id,
-      empresa_id:
-        loja.empresa_id,
-      loja_id,
-      master:
-        usuario.master,
-      tipo:
-        usuario.tipo,
-      perfil,
-      permissoes
-    }
+const payload = {
+
+  id:
+    usuario.id,
+
+  empresa_id:
+    loja.empresa_id,
+
+  loja_id,
+
+  master:
+    usuario.master,
+
+  tipo:
+    usuario.tipo,
+
+  ativo:
+    usuario.ativo,
+
+  perfil,
+
+  permissoes
+}
 
 /* ===============================
    ACCESS TOKEN
@@ -441,6 +453,7 @@ exports.refresh = async (req, res) => {
       loja_id: decoded.loja_id || null,
       master: decoded.master,
       tipo: decoded.tipo,
+      ativo: decoded.ativo,
       perfil: decoded.perfil || null,
       permissoes: decoded.permissoes || []
     }

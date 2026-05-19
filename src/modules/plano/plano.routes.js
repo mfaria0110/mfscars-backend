@@ -34,6 +34,9 @@ router.get(
             nome,
             preco,
             limite_veiculos,
+            limite_lojas,
+            limite_vendedores,
+            desconto_founders,
             destaque
           FROM plano
           WHERE ativo = true
@@ -99,11 +102,16 @@ router.get(
       const result =
         await db.query(
           `
-          SELECT
-            lp.*,
-            p.nome,
-            p.preco,
-            p.limite_veiculos
+        SELECT
+          lp.*,
+
+          p.nome,
+          p.preco,
+
+          p.limite_veiculos,
+          p.limite_lojas,
+          p.limite_vendedores,
+          p.desconto_founders
           FROM loja_plano lp
           JOIN plano p
             ON p.id = lp.plano_id

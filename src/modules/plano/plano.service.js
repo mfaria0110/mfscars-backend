@@ -8,7 +8,7 @@ const db =
 async function getPlanoAtivo(
   client,
   lojaId
-) {
+) { 
 
   const result =
     await client.query(`

@@ -152,7 +152,15 @@ router.get("/planos", async (req, res) => {
   try {
 
     const r = await db.query(`
-      SELECT id, nome, preco, limite_veiculos, destaque
+      SELECT
+        id,
+        nome,
+        preco,
+        limite_veiculos,
+        limite_lojas,
+        limite_vendedores,
+        desconto_founders,
+        destaque
       FROM plano
       ORDER BY preco
     `);

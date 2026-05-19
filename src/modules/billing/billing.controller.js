@@ -190,7 +190,7 @@ const valorValido =
 
 const possuiCheckout =
   Boolean(
-    webhookData?.init_point
+    webhookData?.response?.init_point
   )
 
 if (
@@ -216,7 +216,7 @@ if (
     reutilizado: true,
 
     init_point:
-      webhookData.init_point
+  webhookData?.response?.init_point
   })
 }
 
@@ -280,50 +280,94 @@ if (
     ========================= */
 
     await db.query(`
-      INSERT INTO loja_plano (
-        loja_id,
-        plano_id,
-        data_inicio,
-        ciclo_inicio,
-        ciclo_fim,
-        status,
-        gateway,
-        subscription_id,
-        webhook_data,
-        valor_pago,
-        criado_em
-      )
-      VALUES (
-        $1,
-        $2,
-        NOW(),
-        NOW(),
-        NOW() + INTERVAL '30 days',
-        'pendente',
-        'mercadopago',
-        $3,
-        $4,
-        $5,
-        NOW()
-      )
+INSERT INTO loja_plano (
+
+  loja_id,
+
+  plano_id,
+
+  data_inicio,
+
+  ciclo_inicio,
+
+  ciclo_fim,
+
+  status,
+
+  gateway,
+
+  subscription_id,
+
+  webhook_data,
+
+  valor_pago,
+
+  valor_original,
+
+  desconto_percentual,
+
+  founders,
+
+  criado_em
+)
+VALUES (
+
+  $1,
+
+  $2,
+
+  NOW(),
+
+  NOW(),
+
+  NOW() + INTERVAL '30 days',
+
+  'pendente',
+
+  'mercadopago',
+
+  $3,
+
+  $4,
+
+  $5,
+
+  $6,
+
+  $7,
+
+  $8,
+
+  NOW()
+)
     `, 
-    [
-      loja_id,
-      plano_id,
-      assinatura.id,
-      JSON.stringify(
-        assinatura
-      ),
-      plano.preco
-    ]
+[
+  loja_id,
+
+  plano_id,
+
+  assinatura.response?.id,
+
+  JSON.stringify(
+    assinatura
+  ),
+
+  assinatura.valor_final,
+
+  assinatura.valor_original,
+
+  assinatura.desconto,
+
+  assinatura.founders
+]
     )
 
     res.json({
 
       ok: true,
 
-      init_point:
-        assinatura.init_point,
+init_point:
+  assinatura.response?.init_point,
 
       assinatura
     })
@@ -338,6 +382,32 @@ if (
     })
   }
 }
+
+exports.getFounders =
+  async (req, res) => {
+
+    try {
+
+      const data =
+await billingService
+  .getFounders()
+
+      res.json(data)
+
+    } catch (e) {
+
+      console.error(e)
+
+      res.status(500).json({
+
+        erro:
+          "Erro ao buscar founders"
+
+      })
+    }
+  }
+
+
 
 /* =========================================
    GERAR PIX
@@ -500,8 +570,51 @@ if (
   VALIDA VALOR ATUAL
 */
 
+const founders =
+  await billingService
+    .getFounders()
+
+const foundersAtivo =
+
+  founders.restantes > 0 &&
+
+  plano.nome !== "FREE" &&
+
+  Number(
+    plano.desconto_founders || 0
+  ) > 0
+
+const desconto =
+
+  foundersAtivo
+
+    ? Number(
+        plano.desconto_founders || 0
+      )
+
+    : 0
+
 const valorPlanoAtual =
-  Number(plano.preco)
+
+  foundersAtivo
+
+    ? Number(
+
+        (
+
+          Number(plano.preco) *
+
+          (
+            1 - (
+              desconto / 100
+            )
+          )
+
+        ).toFixed(2)
+
+      )
+
+    : Number(plano.preco)
 
 const valorPixPendente =
   Number(
@@ -509,8 +622,15 @@ const valorPixPendente =
   )
 
 const mesmoValor =
-  valorPlanoAtual ===
-  valorPixPendente
+
+  Math.abs(
+
+    valorPlanoAtual -
+
+    valorPixPendente
+
+  ) < 0.01
+
 
 /*
   PIX AINDA VÁLIDO
@@ -619,57 +739,74 @@ if (!mesmoValor) {
 
     const assinatura =
       await db.query(`
-        INSERT INTO loja_plano (
+INSERT INTO loja_plano (
 
-          loja_id,
+  loja_id,
 
-          plano_id,
+  plano_id,
 
-          data_inicio,
+  data_inicio,
 
-          ciclo_inicio,
+  ciclo_inicio,
 
-          ciclo_fim,
+  ciclo_fim,
 
-          status,
+  status,
 
-          gateway,
+  gateway,
 
-          valor_pago,
+  valor_pago,
 
-          criado_em
+  valor_original,
 
-        )
-        VALUES (
+  desconto_percentual,
 
-          $1,
+  founders,
 
-          $2,
+  criado_em
+)
+VALUES (
 
-          NOW(),
+  $1,
 
-          NOW(),
+  $2,
 
-          NOW() + INTERVAL '30 days',
+  NOW(),
 
-          'pendente',
+  NOW(),
 
-          'mercadopago_pix',
+  NOW() + INTERVAL '30 days',
 
-          $3,
+  'pendente',
 
-          NOW()
+  'mercadopago_pix',
 
-        )
+  $3,
+
+  $4,
+
+  $5,
+
+  $6,
+
+  NOW()
+)
         RETURNING *
       `,
-      [
-        loja_id,
+[
+  loja_id,
 
-        plano_id,
+  plano_id,
 
-        plano.preco
-      ])
+  pagamento.valor_final,
+
+  pagamento.valor_original,
+
+  pagamento.desconto,
+
+  pagamento.founders
+]
+      )
 
     const lojaPlano =
       assinatura.rows[0]
@@ -752,7 +889,7 @@ if (!mesmoValor) {
 
       paymentId,
 
-      plano.preco,
+      pagamento.valor_final,
 
       'pendente',
 
@@ -1071,29 +1208,65 @@ if (
   )
 }
 
+/* =========================
+   PRESERVA FOUNDERS
+========================= */
+
+const planoAtual =
+  await db.query(`
+
+    SELECT
+      founders,
+      desconto_percentual,
+      valor_original
+    FROM loja_plano
+    WHERE id = $1
+    LIMIT 1
+
+  `, [
+    cobrancaData.loja_plano_id
+  ])
+
+const dadosPlano =
+  planoAtual.rows[0]
 
     /*
       ATIVA PLANO
     */
 
     await db.query(`
-      UPDATE loja_plano
-      SET
+UPDATE loja_plano
+SET
 
-        status = 'ativo',
+  status = 'ativo',
 
-        data_pagamento = NOW(),
+  usados = 0,
 
-        ciclo_inicio = NOW(),
+  founders = $2,
 
-        ciclo_fim =
-          NOW() + INTERVAL '30 days'
+  desconto_percentual = $3,
 
-      WHERE id = $1
+  valor_original = $4,
+
+  data_pagamento = NOW(),
+
+  ciclo_inicio = NOW(),
+
+  ciclo_fim =
+    NOW() + INTERVAL '30 days'
+
+WHERE id = $1
     `,
-    [
-      cobrancaData.loja_plano_id
-    ])
+ [
+  cobrancaData.loja_plano_id,
+
+  dadosPlano?.founders || false,
+
+  dadosPlano?.desconto_percentual || 0,
+
+  dadosPlano?.valor_original || 0
+]
+    )
 
     console.log(
       "✅ Plano ativado via PIX"
@@ -1151,22 +1324,63 @@ if (
       ATIVA NOVA
     */
 
+/* =========================
+   PRESERVA FOUNDERS
+========================= */
+
+const planoAtual =
+  await db.query(`
+
+    SELECT
+      founders,
+      desconto_percentual,
+      valor_original
+
+    FROM loja_plano
+
+    WHERE id = $1
+
+    LIMIT 1
+
+  `, [
+    nova.id
+  ])
+
+const dadosPlano =
+  planoAtual.rows[0]
+
     await db.query(`
-      UPDATE loja_plano
-      SET
+UPDATE loja_plano
+SET
 
-        status = 'ativo',
+  status = 'ativo',
 
-        data_pagamento = NOW(),
+  usados = 0,
 
-        ciclo_inicio = NOW(),
+  founders = $2,
 
-        ciclo_fim =
-          NOW() + INTERVAL '30 days'
+  desconto_percentual = $3,
 
-      WHERE id = $1
+  valor_original = $4,
+
+  data_pagamento = NOW(),
+
+  ciclo_inicio = NOW(),
+
+  ciclo_fim =
+    NOW() + INTERVAL '30 days'
+
+WHERE id = $1
     `,
-    [nova.id])
+    [
+  nova.id,
+
+  dadosPlano?.founders || false,
+
+  dadosPlano?.desconto_percentual || 0,
+
+  dadosPlano?.valor_original || 0
+])
 
     console.log(
       "✅ Plano ativado via PAYMENT"
@@ -1179,6 +1393,23 @@ if (
     status === "rejected"
   ) 
   {
+
+  if (!pagamento.preapproval_id) {
+
+    await db.query(`
+      UPDATE loja_cobranca
+      SET
+        status = 'recusado'
+      WHERE payment_id = $1
+    `, [paymentId])
+
+    console.log(
+      "🚫 PIX recusado"
+    )
+
+    return res.sendStatus(200)
+  }
+
 
     await db.query(`
       UPDATE loja_plano
@@ -1359,6 +1590,28 @@ const status =
             `, [antiga.id])
           }
 
+
+/* =========================
+   PRESERVA FOUNDERS
+========================= */
+
+const planoAtual =
+  await db.query(`
+
+    SELECT
+      founders,
+      desconto_percentual,
+      valor_original
+    FROM loja_plano
+    WHERE id = $1
+    LIMIT 1
+
+  `, [nova.id])
+
+const dadosPlano =
+  planoAtual.rows[0]
+
+
           /*
             ATIVA NOVA
           */
@@ -1366,13 +1619,33 @@ const status =
           await db.query(`
             UPDATE loja_plano
             SET
+
               status = 'ativo',
+
               usados = 0,
+
+              founders = $2,
+
+              desconto_percentual = $3,
+
+              valor_original = $4,
               data_pagamento = NOW(),
               ciclo_inicio = NOW(),
               ciclo_fim = NOW() + INTERVAL '30 days'
             WHERE subscription_id = $1
-          `, [subscriptionId])
+          `, 
+
+            [
+              subscriptionId,
+
+              dadosPlano?.founders || false,
+
+              dadosPlano?.desconto_percentual || 0,
+
+              dadosPlano?.valor_original || 0
+            ]
+
+          )
 
           console.log(
             "✅ Novo plano ativado"

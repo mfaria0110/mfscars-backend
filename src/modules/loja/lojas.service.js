@@ -1,5 +1,7 @@
 const db = require("../../shared/database/db")
 const bcrypt = require("bcrypt")
+const planoService =
+  require("../plano/plano.service")
 
 async function validarSenha(usuarioId, senha, client) {
 
@@ -109,6 +111,19 @@ exports.criar = async (empresaId, dados) => {
   try {
 
     await client.query("BEGIN")
+
+    /* =========================
+   VALIDAR LIMITE LOJAS
+========================= */
+
+await planoService
+  .validarLimiteLojas(
+
+    client,
+
+    empresaId
+
+  )
 
 console.log(
   "DADOS UPDATE RECEBIDOS:",

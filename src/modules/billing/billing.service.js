@@ -1,3 +1,6 @@
+const db =
+  require("../../shared/database/db")
+
 const {
 
   preApproval,
@@ -20,7 +23,61 @@ async function criarAssinatura({
   email,
 
   plano
+
 }) {
+
+  /* =========================
+     FOUNDERS
+  ========================= */
+
+  const founders =
+    await getFounders()
+
+const foundersAtivo =
+
+  founders.restantes > 0 &&
+
+  plano.nome !== "FREE" &&
+
+  Number(
+    plano.desconto_founders || 0
+  ) > 0
+
+  /* =========================
+     DESCONTO
+  ========================= */
+
+  const desconto =
+
+    foundersAtivo
+
+      ? Number(
+          plano.desconto_founders || 0
+        )
+
+      : 0
+
+  const valorFinal =
+
+    foundersAtivo
+
+      ? Number(
+
+          (
+
+            Number(plano.preco) *
+
+            (
+              1 - (
+                desconto / 100
+              )
+            )
+
+          ).toFixed(2)
+
+        )
+
+      : Number(plano.preco)
 
   const response =
     await preApproval.create({
@@ -53,7 +110,7 @@ async function criarAssinatura({
             "months",
 
           transaction_amount:
-            Number(plano.preco),
+            valorFinal,
 
           currency_id:
             "BRL"
@@ -90,11 +147,28 @@ async function criarAssinatura({
   ========================= */
 
   console.log(
+
     "📄 PREAPPROVAL RESPONSE:",
+
     JSON.stringify(response)
+
   )
 
-  return response
+  return {
+
+    response,
+
+    founders:
+      foundersAtivo,
+
+    desconto,
+
+    valor_original:
+      Number(plano.preco),
+
+    valor_final:
+      valorFinal
+  }
 }
 
 /* =========================
@@ -109,11 +183,64 @@ async function gerarPixPlano({
 
 }) {
 
+  /* =========================
+     FOUNDERS
+  ========================= */
+
+  const founders =
+    await getFounders()
+
+const foundersAtivo =
+
+  founders.restantes > 0 &&
+
+  plano.nome !== "FREE" &&
+
+  Number(
+    plano.desconto_founders || 0
+  ) > 0
+
+  /* =========================
+     DESCONTO
+  ========================= */
+
+  const desconto =
+
+    foundersAtivo
+
+      ? Number(
+          plano.desconto_founders || 0
+        )
+
+      : 0
+
+  const valorFinal =
+
+    foundersAtivo
+
+      ? Number(
+
+          (
+
+            Number(plano.preco) *
+
+            (
+              1 - (
+                desconto / 100
+              )
+            )
+
+          ).toFixed(2)
+
+        )
+
+      : Number(plano.preco)
+
   const pagamento =
     await criarPagamentoPix({
 
       valor:
-        plano.preco,
+        valorFinal,
 
       email:
         loja.email,
@@ -122,7 +249,21 @@ async function gerarPixPlano({
         `Plano ${plano.nome} - MFS Cars`
     })
 
-  return pagamento
+  return {
+
+    ...pagamento,
+
+    founders:
+      foundersAtivo,
+
+    desconto,
+
+    valor_original:
+      Number(plano.preco),
+
+    valor_final:
+      valorFinal
+  }
 }
 
 /* =========================
@@ -138,6 +279,62 @@ async function cancelarAssinatura(
   )
 }
 
+/* =========================================
+   FOUNDERS
+========================================= */
+
+async function getFounders() {
+
+  const result =
+    await db.query(`
+
+      SELECT
+        COUNT(
+          DISTINCT l.empresa_id
+        )::INTEGER AS total
+
+      FROM loja_plano lp
+
+      JOIN loja l
+        ON l.id = lp.loja_id
+
+WHERE
+  lp.founders = true
+
+  AND lp.status != 'cancelado'
+
+    `)
+
+  const usadas =
+    Number(
+      result.rows[0].total || 0
+    )
+
+  const total = 20
+
+if (
+  usadas >= total
+) {
+
+  console.log(
+    "🚫 Founders encerrado"
+  )
+}
+
+  return {
+
+    total,
+
+    usadas,
+
+    restantes:
+      Math.max(
+        total - usadas,
+        0
+      )
+  }
+}
+
 /* =========================
    EXPORTS
 ========================= */
@@ -148,5 +345,7 @@ module.exports = {
 
   cancelarAssinatura,
 
-  gerarPixPlano
+  gerarPixPlano,
+
+  getFounders
 }

@@ -30,4 +30,9 @@ router.get(
   controller.statusPix
 )
 
+router.get(
+  "/founders",
+  controller.getFounders
+)
+
 module.exports = router

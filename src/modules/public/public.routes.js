@@ -310,4 +310,68 @@ router.get(
   juridicoController.buscar
 )
 
+/* ===============================
+   🔥 FOUNDERS
+================================ */
+
+router.get(
+  "/founders",
+  async (req, res) => {
+
+    try {
+
+      const r =
+        await db.query(`
+
+          SELECT
+            COUNT(
+              DISTINCT l.empresa_id
+            )::INTEGER AS total
+
+          FROM loja_plano lp
+
+          JOIN loja l
+            ON l.id = lp.loja_id
+
+          WHERE
+            lp.founders = true
+
+            AND lp.status != 'cancelado'
+
+        `)
+
+      const usadas =
+        Number(
+          r.rows[0].total || 0
+        )
+
+      const total = 20
+
+      res.json({
+
+        total,
+
+        usadas,
+
+        restantes:
+          Math.max(
+            total - usadas,
+            0
+          )
+      })
+
+    } catch(e){
+
+      console.error(e)
+
+      res.status(500).json({
+        erro:
+          "Erro founders"
+      })
+
+    }
+
+  }
+)
+
 module.exports = router;

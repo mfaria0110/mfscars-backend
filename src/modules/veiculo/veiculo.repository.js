@@ -1256,27 +1256,6 @@ ORDER BY ano_modelo DESC
 
   }
 
-  exports.listarFavoritos = async (usuarioId) => {
-
-    const r = await db.query(`
-    SELECT
-      v.*,
-      (
-        SELECT url
-        FROM veiculo_foto
-        WHERE veiculo_id = v.id
-        ORDER BY principal DESC
-        LIMIT 1
-      ) foto
-    FROM favorito f
-    JOIN veiculo v ON v.id = f.veiculo_id
-    WHERE f.usuario_id=$1
-    ORDER BY f.created_at DESC
-    `, [usuarioId])
-
-    return r.rows
-  }
-
 exports.listarPublico = async (filtros = {}) => {
 
   const page = Number(filtros.page || 1);
@@ -1314,7 +1293,7 @@ exports.listarPublico = async (filtros = {}) => {
     params.push(`%${filtros.cidade}%`);
 
     where += `
-      AND e.cidade ILIKE $${params.length}
+      AND l.cidade ILIKE $${params.length}
     `;
   }
 
@@ -1327,67 +1306,53 @@ exports.listarPublico = async (filtros = {}) => {
     `;
   }
 
-  const params = [];
-
-  let where = `WHERE v.status = 'disponivel'`;
-
-  const page = Number(filtros.page) || 1;
-  const limit = 12;
-  const offset = (page - 1) * limit;
-
   let query = `
-    SELECT 
+    SELECT
       v.id,
+      v.loja_id,
       v.marca,
       v.modelo,
-      v.ano_modelo as ano,
+      v.ano_modelo,
       v.valor,
-      l.cidade,
-      l.estado,
-      l.nome as loja,
-      v.loja_id,
 
       COALESCE((
-        SELECT url 
-        FROM veiculo_foto 
-        WHERE veiculo_id = v.id 
+        SELECT url
+        FROM veiculo_foto
+        WHERE veiculo_id = v.id
         ORDER BY principal DESC
         LIMIT 1
-      ), 'sem-foto.jpg') as foto
+      ), 'sem-foto.jpg') foto,
+
+      l.nome AS loja,
+      l.cidade,
+      l.estado
 
     FROM veiculo v
-    LEFT JOIN loja l ON l.id = v.loja_id
+
+    JOIN loja l
+    ON l.id = v.loja_id
 
     ${where}
+
+    ORDER BY v.data_cadastro DESC
+
+    LIMIT $${params.length + 1}
+    OFFSET $${params.length + 2}
   `;
 
   params.push(limit);
-  query += ` LIMIT $${params.length}`;
-
   params.push(offset);
-  query += ` OFFSET $${params.length}`;
 
-  const result = await db.query(query, params);
+  const r = await db.query(query, params);
 
-  const totalResult = await db.query(`
-    SELECT COUNT(*)
-    FROM veiculo v
-    LEFT JOIN loja l ON l.id = v.loja_id
-    ${where}
-  `);
-
-  const total = Number(totalResult.rows[0].count);
-  const totalPages = Math.ceil(total / limit);
-
-  const data = result.rows.map(v => ({
+  const data = r.rows.map(v => ({
     ...v,
     foto: normalizarFoto(v.foto)
   }));
 
   return {
-    data,
     page,
-    totalPages
+    data
   };
 }
 

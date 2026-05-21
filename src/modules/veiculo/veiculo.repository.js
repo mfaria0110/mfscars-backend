@@ -1279,6 +1279,42 @@ ORDER BY ano_modelo DESC
 
 exports.listarPublico = async (filtros = {}) => {
 
+  if (filtros.marca) {
+
+  params.push(`%${filtros.marca}%`);
+
+  where += `
+    AND v.marca ILIKE $${params.length}
+  `;
+}
+
+if (filtros.modelo) {
+
+  params.push(`%${filtros.modelo}%`);
+
+  where += `
+    AND v.modelo ILIKE $${params.length}
+  `;
+}
+
+if (filtros.cidade) {
+
+  params.push(`%${filtros.cidade}%`);
+
+  where += `
+    AND l.cidade ILIKE $${params.length}
+  `;
+}
+
+if (filtros.preco) {
+
+  params.push(Number(filtros.preco));
+
+  where += `
+    AND v.valor <= $${params.length}
+  `;
+}
+
   const params = [];
 
   let where = `WHERE v.status = 'disponivel'`;

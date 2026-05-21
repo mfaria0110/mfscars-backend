@@ -1279,41 +1279,53 @@ ORDER BY ano_modelo DESC
 
 exports.listarPublico = async (filtros = {}) => {
 
+  const page = Number(filtros.page || 1);
+
+  const limit = 12;
+
+  const offset = (page - 1) * limit;
+
+  const params = [];
+
+  let where = `
+    WHERE v.status = 'disponivel'
+  `;
+
   if (filtros.marca) {
 
-  params.push(`%${filtros.marca}%`);
+    params.push(`%${filtros.marca}%`);
 
-  where += `
-    AND v.marca ILIKE $${params.length}
-  `;
-}
+    where += `
+      AND v.marca ILIKE $${params.length}
+    `;
+  }
 
-if (filtros.modelo) {
+  if (filtros.modelo) {
 
-  params.push(`%${filtros.modelo}%`);
+    params.push(`%${filtros.modelo}%`);
 
-  where += `
-    AND v.modelo ILIKE $${params.length}
-  `;
-}
+    where += `
+      AND v.modelo ILIKE $${params.length}
+    `;
+  }
 
-if (filtros.cidade) {
+  if (filtros.cidade) {
 
-  params.push(`%${filtros.cidade}%`);
+    params.push(`%${filtros.cidade}%`);
 
-  where += `
-    AND l.cidade ILIKE $${params.length}
-  `;
-}
+    where += `
+      AND e.cidade ILIKE $${params.length}
+    `;
+  }
 
-if (filtros.preco) {
+  if (filtros.preco) {
 
-  params.push(Number(filtros.preco));
+    params.push(Number(filtros.preco));
 
-  where += `
-    AND v.valor <= $${params.length}
-  `;
-}
+    where += `
+      AND v.valor <= $${params.length}
+    `;
+  }
 
   const params = [];
 

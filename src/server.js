@@ -175,6 +175,11 @@ const empresaAdminRoutes =
     "./modules/empresa-admin/empresa-admin.routes"
   )
 
+const lojaClausulaRoutes =
+  require(
+    "./modules/loja-clausula/loja-clausula.routes"
+  )
+
 /* =========================
    ROTAS API
 ========================= */
@@ -185,6 +190,11 @@ app.use("/public", publicRoutes)
 app.use("/empresas", empresaRoutes)
 
 app.use("/veiculos", veiculoRoutes)
+
+app.use(
+  "/loja-clausula",
+  lojaClausulaRoutes
+)
 
 app.use("/vendas", vendaRoutes)
 

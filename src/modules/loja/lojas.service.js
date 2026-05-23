@@ -251,12 +251,13 @@ const template =
 const padrao =
   template.rows[0] || {}
 
-await client.query(
 console.log(
   "TEMPLATE ENCONTRADO:",
   padrao
 )
 
+
+await client.query(
   `
   INSERT INTO loja_clausula (
 

@@ -228,9 +228,63 @@ const r = await client.query(`
   dados.logo || null
 ])
 
+const novaLoja =
+  r.rows[0]
+
+const template =
+  await client.query(
+    `
+    SELECT
+      clausulas,
+      garantia,
+      transferencia
+
+    FROM loja_clausula
+
+    WHERE padrao = true
+    AND ativo = true
+
+    LIMIT 1
+    `
+  )
+
+const padrao =
+  template.rows[0] || {}
+
+await client.query(
+  `
+  INSERT INTO loja_clausula (
+
+    loja_id,
+    empresa_id,
+    clausulas,
+    garantia,
+    transferencia
+
+  )
+
+  VALUES ($1,$2,$3,$4,$5)
+  `,
+  [
+
+    novaLoja.id,
+
+    empresaId,
+
+    padrao.clausulas || "",
+
+    padrao.garantia || "",
+
+    padrao.transferencia || ""
+  ]
+)
+
+
     await client.query("COMMIT")
 
     return r.rows[0]
+
+
 
   } catch (e) {
 
@@ -415,6 +469,11 @@ exports.excluir = async (id, empresaId, usuario, senha) => {
     await client.query(`DELETE FROM veiculo_midia WHERE loja_id = $1`, [id])
     await client.query(`DELETE FROM veiculo_opcional WHERE loja_id = $1`, [id])
     await client.query(`DELETE FROM veiculo_proprietario WHERE loja_id = $1`, [id])
+
+await client.query(`
+  DELETE FROM loja_clausula
+  WHERE loja_id = $1
+`, [id])
 
     await client.query(`DELETE FROM loja_plano WHERE loja_id = $1`, [id])
     await client.query(`DELETE FROM lead WHERE loja_id = $1`, [id])

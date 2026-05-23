@@ -1,3 +1,6 @@
+const db =
+  require("../../shared/database/db")
+
 function moeda(valor) {
   return Number(valor || 0).toLocaleString(
     "pt-BR",
@@ -60,12 +63,53 @@ const BASE_URL =
   process.env.BASE_URL ||
   "https://api.mfscars.com.br"
 
-module.exports = function gerarContrato(
-  dados
-) {
+async function buscarClausulas(lojaId) {
+
+  try {
+
+    const result =
+      await db.query(
+        `
+        SELECT
+          clausulas,
+          garantia,
+          transferencia
+
+        FROM loja_clausula
+
+        WHERE loja_id = $1
+
+        LIMIT 1
+        `,
+        [lojaId]
+      )
+
+    return (
+      result.rows[0] || {}
+    )
+
+  } catch(err) {
+
+    console.error(err)
+
+    return {}
+  }
+}
+
+
   /* =========================
      VEÍCULOS ENTRADA HTML
   ========================= */
+
+module.exports = async function gerarContrato(
+  dados
+) {
+
+const clausulasLoja =
+  await buscarClausulas(
+    dados.loja_id
+  )
+
 const entradasHtml =
   dados.entradas?.length
     ? `
@@ -451,7 +495,6 @@ table {
   </tr>
 </table>
 
-
 <!-- VEÍCULO -->
 <table>
   <tr class="titulo">
@@ -643,88 +686,60 @@ ${entradasHtml}
 
 <!-- CLÁUSULAS -->
 <div class="clausulas">
- <h3>CLÁUSULAS CONTRATUAIS</h3>
-  <p>
-    Pelo presente instrumento, e na melhor forma de direito, de um lado, doravante designado REVENDEDOR:
-  </p>
 
-  <p><strong>Nome:</strong> ${dados.loja_nome || "-"}</p>
 
-  <p>
-    <strong>Endereço:</strong>
-    ${dados.loja_endereco || "-"},
-    Nº ${dados.loja_numero || "-"} -
-    ${dados.loja_bairro || "-"} -
-    CEP ${formatCEP(dados.loja_cep)}
-  </p>
+<h3>
+  CLÁUSULAS CONTRATUAIS
+</h3>
 
-  <p>
-    <strong>Cidade:</strong>
-    ${dados.loja_cidade || "-"} /
-    ${dados.loja_estado || "-"}
-  </p>
+<div>
+  ${
+    clausulasLoja.clausulas ||
 
-  <p>
-    <strong>CNPJ:</strong>
-    ${formatCPF_CNPJ(dados.loja_cnpj)}
-  </p>
+    `
+      <p>
+        Nenhuma cláusula cadastrada.
+      </p>
+    `
+  }
+</div>
 
-  <br/>
+<br/>
 
-  <p>
-    O REVENDEDOR garante, por 90 (noventa) dias ou em conformidade com o Art. 26, II, do Código de Defesa do Consumidor, ou 3000 quilômetros percorridos, prevalecendo o que ocorrer primeiro, motor (apenas o bloco do motor e suas partes internas) e câmbio (apenas o bloco do câmbio e suas partes internas).
-  </p>
+<h3>
+  CONDIÇÕES GERAIS DE GARANTIA
+</h3>
 
-  <p>
-    Em ambos os casos não abrangem a garantia dos demais componentes do veículo, sendo considerado o estado de uso normal.
-  </p>
+<div>
+  ${
+    clausulasLoja.garantia ||
 
-  <p>
-    Compromete-se ainda a reparar ou substituir todas as peças que apresentarem defeitos de fabricação ou material, desde que reparado em oficina indicada pelo REVENDEDOR, substituindo gratuitamente somente as peças julgadas defeituosas.
-  </p>
+    `
+      <p>
+        Garantia conforme legislação vigente.
+      </p>
+    `
+  }
+</div>
 
-  <p>
-    Em caso de desistência imotivada por parte do COMPRADOR, será devida multa compensatória de 10% sobre o valor total do contrato, sem prejuízo de eventuais perdas e danos comprovados.
-  </p>
+<br/>
 
-  <br/>
+<h3>
+  TRANSFERÊNCIA DE PROPRIEDADE
+</h3>
 
-  <h3>CONDIÇÕES GERAIS DE GARANTIA</h3>
+<div>
+  ${
+    clausulasLoja.transferencia ||
 
-  <p>A garantia poderá ser suspensa caso fique comprovado mau uso, negligência ou intervenção de terceiros não autorizados:</p>
-<ol type="a" class="lista">
-  <li>O veículo superaquecer, por falta de água no radiador, rompimento de mangueiras, queima de junta do cabeçote ou falta de óleo;</li>
-  <li>O veículo for alienado para outra pessoa, no período de garantia;</li>
-  <li>O veículo for submetido a abuso, sobrecarga ou acidente;</li>
-  <li>For empregado em condições adversas de qualquer espécie ou natureza;</li>
-  <li>Velocímetro ou seu cabo violados;</li>
-  <li>Tipo de combustível original do veículo for modificado;</li>
-  <li>O COMPRADOR declara que vistoriou o veículo previamente, estando ciente de seu estado de conservação, funcionamento e características, adquirindo-o no estado em que se encontra.</li>
-  <li>O COMPRADOR declara estar ciente de que o veículo é usado, podendo apresentar desgaste natural decorrente do tempo e uso.</li>
-</ol>
+    `
+      <p>
+        Transferência sob responsabilidade do comprador.
+      </p>
+    `
+  }
+</div>
 
-  <br/>
-
-  <p>
-    Estão excluídos da garantia, e o REVENDEDOR não se responsabiliza por despesas decorrentes de uso normal ou desgaste natural do veículo:
-  </p>
-
-<ol type="a" class="lista">
-  <li>Óleos, lubrificação, combustível, correias e similares;</li>
-  <li>Deslocamento de pessoal, imobilização e reboque do veículo;</li>
-  <li>Danos materiais ou pessoais causados ao cliente e/ou terceiros;</li>
-  <li>Rolamentos, disco e prensa, parte elétrica;</li>
-  <li>Caso outra pessoa não autorizada fizer qualquer reparo no veículo, o cliente concorda em caráter irrevogável e irretratável, perdendo o direito à cobertura da garantia contratual para os itens afetados.</li>
-</ol>
-
-  <br/>
-
-<h3>TRANSFERÊNCIA DE PROPRIEDADE</h3>
-
-<ol type="a" class="lista">
-<li>O COMPRADOR se compromete a realizar a transferência do veículo junto ao DETRAN no prazo máximo de 30 (trinta) dias, conforme legislação vigente.</li>
-<li>O não cumprimento deste prazo implicará em responsabilidade total do COMPRADOR por quaisquer multas, pontos na CNH, tributos e demais encargos que venham a incidir sobre o veículo.</li>
-</ol>
 
 <br/>
 

@@ -1,68 +1,69 @@
-const db = require("../../shared/database/db")
+const db =
+  require("../../shared/database/db")
 
-exports.buscarPorLoja = async (
-  lojaId
-) => {
+exports.buscarPorLoja =
+  async (lojaId) => {
 
-  const res = await db.query(
-    `
-    SELECT *
-    FROM loja_clausula
-    WHERE loja_id = $1
-    LIMIT 1
-    `,
-    [lojaId]
-  )
+    const res =
+      await db.query(
+        `
+        SELECT *
+        FROM loja_clausula
+        WHERE loja_id = $1
+        LIMIT 1
+        `,
+        [lojaId]
+      )
 
-  return res.rows[0]
+    return res.rows[0]
 }
 
-exports.salvar = async (
-  dados
-) => {
+exports.salvar =
+  async (dados) => {
 
-  const res = await db.query(
-    `
-    INSERT INTO loja_clausula (
+    const res =
+      await db.query(
+        `
+        INSERT INTO loja_clausula (
 
-      empresa_id,
-      loja_id,
+          empresa_id,
+          loja_id,
 
-      clausulas,
-      garantia,
-      transferencia
+          clausulas,
+          garantia,
+          transferencia
 
-    )
+        )
 
-    VALUES ($1,$2,$3,$4,$5)
+        VALUES ($1,$2,$3,$4,$5)
 
-    ON CONFLICT (loja_id)
+        ON CONFLICT (loja_id)
 
-    DO UPDATE SET
+        DO UPDATE SET
 
-      clausulas =
-        EXCLUDED.clausulas,
+          clausulas =
+            EXCLUDED.clausulas,
 
-      garantia =
-        EXCLUDED.garantia,
+          garantia =
+            EXCLUDED.garantia,
 
-      transferencia =
-        EXCLUDED.transferencia,
+          transferencia =
+            EXCLUDED.transferencia,
 
-      updated_at = NOW()
+          updated_at = NOW()
 
-    RETURNING *
-    `,
-    [
+        RETURNING *
+        `,
+        [
 
-      dados.empresa_id,
-      dados.loja_id,
+          dados.empresa_id,
+          dados.loja_id,
 
-      dados.clausulas,
-      dados.garantia,
-      dados.transferencia
-    ]
-  )
+          dados.clausulas,
+          dados.garantia,
+          dados.transferencia
+        ]
+      )
 
-  return res.rows[0]
+    return res.rows[0]
 }

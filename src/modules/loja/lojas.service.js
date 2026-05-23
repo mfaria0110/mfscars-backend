@@ -252,6 +252,11 @@ const padrao =
   template.rows[0] || {}
 
 await client.query(
+console.log(
+  "TEMPLATE ENCONTRADO:",
+  padrao
+)
+
   `
   INSERT INTO loja_clausula (
 
@@ -279,6 +284,20 @@ await client.query(
   ]
 )
 
+const clausulaCriada =
+  await client.query(
+    `
+    SELECT *
+    FROM loja_clausula
+    WHERE loja_id = $1
+    `,
+    [novaLoja.id]
+  )
+
+console.log(
+  "CLAUSULA CRIADA:",
+  clausulaCriada.rows[0]
+)
 
     await client.query("COMMIT")
 

@@ -215,6 +215,35 @@ if (
       dados.veiculo_id
     ])
 
+    await client.query(`
+
+  UPDATE loja_plano
+
+  SET vendidos_ciclo =
+
+      COALESCE(
+        vendidos_ciclo,
+        0
+      ) + 1
+
+  WHERE id = (
+
+    SELECT id
+
+    FROM loja_plano
+
+    WHERE
+      loja_id = $1
+      AND status = 'ativo'
+
+    ORDER BY id DESC
+
+    LIMIT 1
+
+  )
+
+`, [v.loja_id])
+
     await client.query(
       "COMMIT"
     )
@@ -424,6 +453,38 @@ if (!r.rows.length) {
       `,
       [veiculoId]
     )
+
+    await client.query(`
+
+  UPDATE loja_plano
+
+  SET vendidos_ciclo =
+
+      GREATEST(
+        COALESCE(
+          vendidos_ciclo,
+          0
+        ) - 1,
+        0
+      )
+
+  WHERE id = (
+
+    SELECT id
+
+    FROM loja_plano
+
+    WHERE
+      loja_id = $1
+      AND status = 'ativo'
+
+    ORDER BY id DESC
+
+    LIMIT 1
+
+  )
+
+`, [lojaId])
 
     /* ==========================
        REMOVE VEÍCULOS ENTRADA

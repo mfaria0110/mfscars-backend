@@ -63,18 +63,71 @@ async function validarLimiteVeiculos(
     )
   }
 
-  const usados =
+  /* =========================
+     ILIMITADO
+  ========================= */
+
+  if (
+    plano.limite_veiculos === null
+  ) {
+
+    return plano
+  }
+
+  /* =========================
+     VEÍCULOS ATIVOS
+  ========================= */
+
+  const ativos =
+    await client.query(`
+
+      SELECT
+        COUNT(*)::INTEGER AS total
+
+      FROM veiculo
+
+      WHERE
+        loja_id = $1
+        AND status != 'vendido'
+
+    `, [lojaId])
+
+  const ativosTotal =
     Number(
-      plano.usados || 0
+      ativos.rows[0].total || 0
     )
+
+  /* =========================
+     VENDIDOS CICLO
+  ========================= */
+
+  const vendidosCiclo =
+    Number(
+      plano.vendidos_ciclo || 0
+    )
+
+  /* =========================
+     TOTAL CONSUMIDO
+  ========================= */
+
+  const consumidos =
+    ativosTotal +
+    vendidosCiclo
 
   const limite =
     Number(
       plano.limite_veiculos || 0
     )
 
+  console.log({
+    ativosTotal,
+    vendidosCiclo,
+    consumidos,
+    limite
+  })
+
   if (
-    usados >= limite
+    consumidos >= limite
   ) {
 
     throw new Error(

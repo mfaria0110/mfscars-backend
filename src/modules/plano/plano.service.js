@@ -88,7 +88,10 @@ async function validarLimiteVeiculos(
 
       WHERE
         loja_id = $1
-        AND status != 'vendido'
+        AND LOWER(status) IN (
+          'disponivel',
+          'reservado'
+        )
 
     `, [lojaId])
 

@@ -130,19 +130,27 @@ exports.gerarContratoPDF = async (
   lojaId
 ) => {
 
-  const dados = await vendaRepository.buscarContrato(
-  id,
-  empresaId,
-  lojaId
-);
+  const dados =
+    await vendaRepository.buscarContrato(
+      id,
+      empresaId,
+      lojaId
+    );
 
   if (!dados) {
-    throw new Error("Venda não encontrada");
+    throw new Error(
+      "Venda não encontrada"
+    );
   }
 
-  const html = template(dados);
+  const html =
+    await template(dados);
 
-  const pdf = await gerarPDF(html, dados);
+  const pdf =
+    await gerarPDF(
+      html,
+      dados
+    );
 
   return pdf;
 };

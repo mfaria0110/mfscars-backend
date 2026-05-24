@@ -130,6 +130,16 @@ const clausulasLoja =
     dados.loja_id
   )
 
+console.log(
+  "TIPO CLAUSULAS:",
+  typeof clausulasLoja.clausulas
+)
+
+console.log(
+  "CLAUSULAS:",
+  clausulasLoja.clausulas
+)
+
 const entradasHtml =
   dados.entradas?.length
     ? `

@@ -59,6 +59,26 @@ function formatCEP(valor) {
   )
 }
 
+function htmlSeguro(valor) {
+
+  if (!valor) return ""
+
+  if (typeof valor === "string") {
+    return valor
+  }
+
+  if (typeof valor === "object") {
+
+    if (valor.html) {
+      return valor.html
+    }
+
+    return JSON.stringify(valor)
+  }
+
+  return String(valor)
+}
+
 const BASE_URL =
   process.env.BASE_URL ||
   "https://api.mfscars.com.br"
@@ -694,7 +714,9 @@ ${entradasHtml}
 
 <div>
   ${
-    clausulasLoja.clausulas ||
+    htmlSeguro(
+  clausulasLoja.clausulas
+)||
 
     `
       <p>
@@ -712,7 +734,9 @@ ${entradasHtml}
 
 <div>
   ${
-    clausulasLoja.garantia ||
+    htmlSeguro(
+  clausulasLoja.garantia
+) ||
 
     `
       <p>
@@ -730,7 +754,9 @@ ${entradasHtml}
 
 <div>
   ${
-    clausulasLoja.transferencia ||
+    htmlSeguro(
+  clausulasLoja.transferencia
+) ||
 
     `
       <p>

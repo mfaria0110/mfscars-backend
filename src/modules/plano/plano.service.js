@@ -63,74 +63,18 @@ async function validarLimiteVeiculos(
     )
   }
 
-  /* =========================
-     ILIMITADO
-  ========================= */
-
-  if (
-    plano.limite_veiculos === null
-  ) {
-
-    return plano
-  }
-
-  /* =========================
-     VEÍCULOS ATIVOS
-  ========================= */
-
-  const ativos =
-    await client.query(`
-
-      SELECT
-        COUNT(*)::INTEGER AS total
-
-      FROM veiculo
-
-      WHERE
-        loja_id = $1
-        AND LOWER(status) IN (
-          'disponivel',
-          'reservado'
-        )
-
-    `, [lojaId])
-
-  const ativosTotal =
+  const usados =
     Number(
-      ativos.rows[0].total || 0
+      plano.usados || 0
     )
-
-  /* =========================
-     VENDIDOS CICLO
-  ========================= */
-
-  const vendidosCiclo =
-    Number(
-      plano.vendidos_ciclo || 0
-    )
-
-  /* =========================
-     TOTAL CONSUMIDO
-  ========================= */
-
-  const consumidos =
-    ativosTotal +
-    vendidosCiclo
 
   const limite =
     Number(
       plano.limite_veiculos || 0
     )
 
-  console.log({
-    ativosTotal,
-    vendidosCiclo,
-    consumidos,
-    limite
-  })
-
   if (
-    consumidos >= limite
+    usados >= limite
   ) {
 
     throw new Error(
@@ -151,50 +95,59 @@ async function validarLimiteLojas(
 ) {
 
   /* =========================
-     SOMA LIMITES DOS PLANOS
+     LOJA PRINCIPAL
   ========================= */
 
-  const limites =
+  const lojaPrincipal =
     await client.query(`
 
-      SELECT
+      SELECT id
 
-        COALESCE(
-          SUM(p.limite_lojas),
-          0
-        )::INTEGER AS limite_total
+      FROM loja
 
-      FROM loja_plano lp
+      WHERE empresa_id = $1
 
-      JOIN plano p
-        ON p.id = lp.plano_id
+      ORDER BY id ASC
 
-      JOIN loja l
-        ON l.id = lp.loja_id
-
-      WHERE
-        l.empresa_id = $1
-        AND lp.status = 'ativo'
+      LIMIT 1
 
     `, [empresaId])
 
-  const limite =
-    Number(
-      limites.rows[0]
-        ?.limite_total || 0
+  if (
+    !lojaPrincipal.rows.length
+  ) {
+
+    throw new Error(
+      "Empresa sem loja"
     )
+  }
+
+  const lojaId =
+    lojaPrincipal.rows[0].id
+
+  const plano =
+    await getPlanoAtivo(
+      client,
+      lojaId
+    )
+
+  if (!plano) {
+
+    throw new Error(
+      "Nenhum plano ativo"
+    )
+  }
 
   /* =========================
      ILIMITADO
   ========================= */
 
-  if (limite === null) {
-    return true
-  }
+  if (
+    plano.limite_lojas === null
+  ) {
 
-  /* =========================
-     TOTAL LOJAS EMPRESA
-  ========================= */
+    return plano
+  }
 
   const total =
     await client.query(`
@@ -210,13 +163,13 @@ async function validarLimiteLojas(
 
   const usados =
     Number(
-      total.rows[0]
-        ?.total || 0
+      total.rows[0].total || 0
     )
 
-  /* =========================
-     VALIDAÇÃO
-  ========================= */
+  const limite =
+    Number(
+      plano.limite_lojas || 0
+    )
 
   if (
     usados >= limite
@@ -227,10 +180,8 @@ async function validarLimiteLojas(
     )
   }
 
-  return true
+  return plano
 }
-
-
 
 /* =========================================
    VALIDAR LIMITE VENDEDORES

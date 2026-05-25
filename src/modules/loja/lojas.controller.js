@@ -91,11 +91,12 @@ exports.criar = async (req, res) => {
       dados
     )
 
-    const data =
-      await service.criar(
-        empresaId,
-        dados
-      )
+const data =
+  await service.criar(
+    empresaId,
+    req.user.id,
+    dados
+  )
 
     res.json(data)
 

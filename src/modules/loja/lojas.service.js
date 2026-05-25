@@ -104,7 +104,11 @@ exports.todas = async (user) => {
 /* ===============================
    CRIAR (COM TRANSACTION)
 ================================ */
-exports.criar = async (empresaId, dados) => {
+exports.criar = async (
+  empresaId,
+  usuarioId,
+  dados
+) => {
 
   const client = await db.connect()
 
@@ -230,6 +234,27 @@ const r = await client.query(`
 
 const novaLoja =
   r.rows[0]
+
+/* =========================
+   VINCULAR USUÁRIO CRIADOR
+========================= */
+
+await client.query(
+  `
+  INSERT INTO usuario_loja (
+    usuario_id,
+    loja_id,
+    perfil,
+    ativo
+  )
+  VALUES ($1,$2,$3,true)
+  `,
+  [
+    dados.usuario_id,
+    novaLoja.id,
+    "admin"
+  ]
+)
 
 const template =
   await client.query(

@@ -1,338 +1,402 @@
-const db =require("../../shared/database/db")
+const db =
+  require("../../shared/database/db")
 
-/* ========== BUSCAR PLANO ATIVO MF ============== */
+/* =========================================
+   BUSCAR PLANO ATIVO
+========================================= */
 
-async function getPlanoAtivo(client,lojaId) {
+async function getPlanoAtivo(
+  client,
+  lojaId
+) { 
 
-const result =await client.query(`
+  const result =
+    await client.query(`
 
-  SELECT
-    lp.*,
+      SELECT
+        lp.*,
 
-    p.nome,
-    p.preco,
+        p.nome,
+        p.preco,
 
-    p.limite_veiculos,
-    p.limite_lojas,
-    p.limite_vendedores
+        p.limite_veiculos,
+        p.limite_lojas,
+        p.limite_vendedores
 
-  FROM loja_plano lp
+      FROM loja_plano lp
 
-  JOIN plano p
-    ON p.id = lp.plano_id
+      JOIN plano p
+        ON p.id = lp.plano_id
 
-  WHERE
-    lp.loja_id = $1
-    AND lp.status = 'ativo'
+      WHERE
+        lp.loja_id = $1
+        AND lp.status = 'ativo'
 
-  ORDER BY lp.id DESC
+      ORDER BY lp.id DESC
 
-  LIMIT 1
+      LIMIT 1
 
-`, [lojaId])
+    `, [lojaId])
 
-return result.rows[0] || null}
-
-/* =========================================VALIDAR LIMITE VEÍCULOS========================================= */
-
-async function validarLimiteVeiculos(client,lojaId) {
-
-const plano =await getPlanoAtivo(client,lojaId)
-
-if (!plano) {
-
-throw new Error(
-  "Nenhum plano ativo"
-)
-
+  return result.rows[0] || null
 }
 
-/* =========================ILIMITADO========================= */
+/* =========================================
+   VALIDAR LIMITE VEÍCULOS
+========================================= */
 
-if (plano.limite_veiculos === null) {
+async function validarLimiteVeiculos(
+  client,
+  lojaId
+) {
 
-return plano
-
-}
-
-/* =========================VEÍCULOS ATIVOS========================= */
-
-const ativos =await client.query(`
-
-  SELECT
-    COUNT(*)::INTEGER AS total
-
-  FROM veiculo
-
-  WHERE
-    loja_id = $1
-    AND LOWER(status) IN (
-      'disponivel',
-      'reservado'
+  const plano =
+    await getPlanoAtivo(
+      client,
+      lojaId
     )
 
-`, [lojaId])
+  if (!plano) {
 
-const ativosTotal =Number(ativos.rows[0].total || 0)
+    throw new Error(
+      "Nenhum plano ativo"
+    )
+  }
 
-/* =========================VENDIDOS CICLO========================= */
+  /* =========================
+     ILIMITADO
+  ========================= */
 
-const vendidosCiclo =Number(plano.vendidos_ciclo || 0)
+  if (
+    plano.limite_veiculos === null
+  ) {
 
-/* =========================TOTAL CONSUMIDO========================= */
+    return plano
+  }
 
-const consumidos =ativosTotal +vendidosCiclo
+  /* =========================
+     VEÍCULOS ATIVOS
+  ========================= */
 
-const limite =Number(plano.limite_veiculos || 0)
+  const ativos =
+    await client.query(`
 
-console.log({ativosTotal,vendidosCiclo,consumidos,limite})
+      SELECT
+        COUNT(*)::INTEGER AS total
 
-if (consumidos >= limite) {
+      FROM veiculo
 
-throw new Error(
-  "Limite de veículos atingido"
-)
+      WHERE
+        loja_id = $1
+        AND LOWER(status) IN (
+          'disponivel',
+          'reservado'
+        )
 
+    `, [lojaId])
+
+  const ativosTotal =
+    Number(
+      ativos.rows[0].total || 0
+    )
+
+  /* =========================
+     VENDIDOS CICLO
+  ========================= */
+
+  const vendidosCiclo =
+    Number(
+      plano.vendidos_ciclo || 0
+    )
+
+  /* =========================
+     TOTAL CONSUMIDO
+  ========================= */
+
+  const consumidos =
+    ativosTotal +
+    vendidosCiclo
+
+  const limite =
+    Number(
+      plano.limite_veiculos || 0
+    )
+
+
+  console.log({
+    ativosTotal,
+    vendidosCiclo,
+    consumidos,
+    limite
+  })
+
+  if (
+    consumidos >= limite
+  ) {
+
+    throw new Error(
+      "Limite de veículos atingido"
+    )
+  }
+
+  return plano
 }
 
-return plano}
+/* =========================================
+   VALIDAR LIMITE LOJAS
+========================================= */
 
-/* =========================================VALIDAR LIMITE LOJAS========================================= */
+async function validarLimiteLojas(
+  client,
+  empresaId
+) {
 
-async function validarLimiteLojas(client,empresaId) {
+  /* =========================
+     SOMA LIMITES DOS PLANOS
+  ========================= */
 
-/* =========================SOMA LIMITES DOS PLANOS========================= */
+  const limites =
+    await client.query(`
 
-const limites =await client.query(`
+      SELECT
 
-  SELECT
+        COALESCE(
+          SUM(p.limite_lojas),
+          0
+        )::INTEGER AS limite_total
 
-    COALESCE(
-      SUM(p.limite_lojas),
-      0
-    )::INTEGER AS limite_total
+      FROM loja_plano lp
 
-  FROM loja_plano lp
+      JOIN plano p
+        ON p.id = lp.plano_id
 
-  JOIN plano p
-    ON p.id = lp.plano_id
+      JOIN loja l
+        ON l.id = lp.loja_id
 
-  JOIN loja l
-    ON l.id = lp.loja_id
+      WHERE
+        l.empresa_id = $1
+        AND lp.status = 'ativo'
 
-  WHERE
-    l.empresa_id = $1
-    AND lp.status = 'ativo'
+    `, [empresaId])
 
-`, [empresaId])
 
-const limite =Number(limites.rows[0]?.limite_total || 0)
+    const limiteBruto =
+      limites.rows[0]
+        ?.limite_total
 
-/* =========================ILIMITADO========================= */
+    if (limiteBruto === null) {
 
-if (limite === null) {return true}
+      return true
+    }
 
-/* =========================TOTAL LOJAS EMPRESA========================= */
+    const limite =
+      Number(limiteBruto || 0)
 
-const total =await client.query(`
 
-  SELECT
-    COUNT(*)::INTEGER AS total
+  /* =========================
+     TOTAL LOJAS EMPRESA
+  ========================= */
 
-  FROM loja
+  const total =
+    await client.query(`
 
-  WHERE empresa_id = $1
+      SELECT
+        COUNT(*)::INTEGER AS total
 
-`, [empresaId])
+      FROM loja
 
-const usados =Number(total.rows[0]?.total || 0)
+      WHERE empresa_id = $1
 
-/* =========================VALIDAÇÃO========================= */
+    `, [empresaId])
 
-if (usados >= limite) {
+  const usados =
+    Number(
+      total.rows[0]
+        ?.total || 0
+    )
 
-throw new Error(
-  "Limite de lojas atingido"
-)
+  /* =========================
+     VALIDAÇÃO
+  ========================= */
 
+  if (
+    usados >= limite
+  ) {
+
+    throw new Error(
+      "Limite de lojas atingido"
+    )
+  }
+
+  return true
 }
 
-return true}
 
 
+/* =========================================
+   VALIDAR LIMITE VENDEDORES
+========================================= */
 
-/* =========================================VALIDAR LIMITE VENDEDORES========================================= */
+async function validarLimiteVendedores(
+  client,
+  lojaId
+) {
 
-async function validarLimiteVendedores(client,lojaId) {
+  const plano =
+    await getPlanoAtivo(
+      client,
+      lojaId
+    )
 
-const plano =await getPlanoAtivo(client,lojaId)
+  if (!plano) {
 
-if (!plano) {
+    throw new Error(
+      "Nenhum plano ativo"
+    )
+  }
 
-throw new Error(
-  "Nenhum plano ativo"
-)
+  /* =========================
+     ILIMITADO
+  ========================= */
 
+  if (
+    plano.limite_vendedores === null
+  ) {
+
+    return plano
+  }
+
+  const total =
+    await client.query(`
+
+      SELECT
+        COUNT(*)::INTEGER AS total
+
+      FROM usuario
+
+      WHERE
+        loja_id = $1
+        AND master = false
+
+    `, [lojaId])
+
+  const usados =
+    Number(
+      total.rows[0].total || 0
+    )
+
+  const limite =
+    Number(
+      plano.limite_vendedores || 0
+    )
+
+  if (
+    usados >= limite
+  ) {
+
+    throw new Error(
+      "Limite de vendedores atingido"
+    )
+  }
+
+  return plano
 }
 
-/* =========================ILIMITADO========================= */
+/* =========================================
+   CONSUMIR VEÍCULO
+========================================= */
 
-if (plano.limite_vendedores === null) {
+async function consumirVeiculo(
+  client,
+  lojaId
+) {
 
-return plano
-
-}
-
-const total =await client.query(`
-
-  SELECT
-    COUNT(*)::INTEGER AS total
-
-  FROM usuario
-
-  WHERE
-    loja_id = $1
-    AND master = false
-
-`, [lojaId])
-
-const usados =Number(total.rows[0].total || 0)
-
-const limite =Number(plano.limite_vendedores || 0)
-
-if (usados >= limite) {
-
-throw new Error(
-  "Limite de vendedores atingido"
-)
-
-}
-
-return plano}
-
-/* =========================================CONSUMIR VEÍCULO========================================= */
-
-async function consumirVeiculo(client,lojaId) {
-
-await validarLimiteVeiculos(client,lojaId)
-
-const result =await client.query(`
-
-  UPDATE loja_plano
-
-  SET usados = usados + 1
-
-  WHERE id = (
-
-    SELECT id
-
-    FROM loja_plano
-
-    WHERE
-      loja_id = $1
-      AND status = 'ativo'
-
-    ORDER BY id DESC
-
-    LIMIT 1
-
+  return await validarLimiteVeiculos(
+    client,
+    lojaId
   )
-
-  RETURNING *
-
-`, [lojaId])
-
-return result.rows[0]}
-
-/* =========================================LIBERAR VEÍCULO========================================= */
-
-async function liberarVeiculo(client,lojaId) {
-
-const result =await client.query(`
-
-  UPDATE loja_plano
-
-  SET usados = GREATEST(
-    usados - 1,
-    0
-  )
-
-  WHERE id = (
-
-    SELECT id
-
-    FROM loja_plano
-
-    WHERE
-      loja_id = $1
-      AND status = 'ativo'
-
-    ORDER BY id DESC
-
-    LIMIT 1
-
-  )
-
-  RETURNING *
-
-`, [lojaId])
-
-return result.rows[0]}
-
-/* =========================================VALIDAR STATUS========================================= */
-
-async function validarPlanoAtivo(client,lojaId) {
-
-const plano =await getPlanoAtivo(client,lojaId)
-
-if (!plano) {
-
-throw new Error(
-  "Nenhum plano ativo"
-)
-
 }
 
-/* =========================STATUS========================= */
+/* =========================================
+   LIBERAR VEÍCULO
+========================================= */
 
-if (plano.status !== "ativo") {
+async function liberarVeiculo() {
 
-throw new Error(
-  `Plano ${plano.status}`
-)
-
+  return true
 }
 
-/* =========================CICLO VENCIDO========================= */
+/* =========================================
+   VALIDAR STATUS
+========================================= */
 
-const vencido =await client.query(`
+async function validarPlanoAtivo(
+  client,
+  lojaId
+) {
 
-  SELECT NOW() > $1 AS vencido
+  const plano =
+    await getPlanoAtivo(
+      client,
+      lojaId
+    )
 
-`, [plano.ciclo_fim])
+  if (!plano) {
 
-if (vencido.rows[0].vencido) {
+    throw new Error(
+      "Nenhum plano ativo"
+    )
+  }
 
-throw new Error(
-  "Plano vencido"
-)
+  /* =========================
+     STATUS
+  ========================= */
 
+  if (
+    plano.status !== "ativo"
+  ) {
+
+    throw new Error(
+      `Plano ${plano.status}`
+    )
+  }
+
+  /* =========================
+     CICLO VENCIDO
+  ========================= */
+
+  const vencido =
+    await client.query(`
+
+      SELECT NOW() > $1 AS vencido
+
+    `, [plano.ciclo_fim])
+
+  if (
+    vencido.rows[0].vencido
+  ) {
+
+    throw new Error(
+      "Plano vencido"
+    )
+  }
+
+  return plano
 }
-
-return plano}
 
 module.exports = {
 
-getPlanoAtivo,
+  getPlanoAtivo,
 
-validarLimiteVeiculos,
+  validarLimiteVeiculos,
 
-validarLimiteLojas,
+  validarLimiteLojas,
 
-validarLimiteVendedores,
+  validarLimiteVendedores,
 
-consumirVeiculo,
+  consumirVeiculo,
 
-liberarVeiculo,
+  liberarVeiculo,
 
-validarPlanoAtivo}
+  validarPlanoAtivo
+}

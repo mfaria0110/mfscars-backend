@@ -1,7 +1,5 @@
 const db = require("../../shared/database/db")
-
 const bcrypt = require("bcrypt")
-
 const planoService =
   require("../plano/plano.service")
 
@@ -25,7 +23,7 @@ async function validarSenha(usuarioId, senha, client) {
 }
 
 /* ===============================
-   LISTAR (SEM TRANSACTION)
+   LISTAR (SEM TRANSACTION) MF
 ================================ */
 exports.listar = async (user, lojaId) => {
 

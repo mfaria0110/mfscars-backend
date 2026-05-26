@@ -1,5 +1,4 @@
-const db =
-  require("../../shared/database/db")
+const db =  require("../../shared/database/db")
 
 /* =========================================
    BUSCAR PLANO ATIVO

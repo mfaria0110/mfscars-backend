@@ -4,7 +4,8 @@ const service = require("./lojas.service");
    LISTAR
 ================================ */
 exports.listar = async (req, res) => {
-  try {
+
+try {
 
 
 console.log("HEADER LOJA:", req.headers["x-loja-id"]);

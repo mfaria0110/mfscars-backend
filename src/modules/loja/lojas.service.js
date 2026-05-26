@@ -1,5 +1,7 @@
 const db = require("../../shared/database/db")
+
 const bcrypt = require("bcrypt")
+
 const planoService =
   require("../plano/plano.service")
 

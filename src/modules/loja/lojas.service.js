@@ -252,7 +252,7 @@ await client.query(
   VALUES ($1,$2,$3,true)
   `,
   [
-    dados.usuario_id,
+    usuarioId,
     novaLoja.id,
     "admin"
   ]

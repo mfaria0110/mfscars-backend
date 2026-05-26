@@ -1,4 +1,5 @@
 module.exports = (req, res, next) => {
+
   try {
     const usuario = req.user;
 

@@ -1,6 +1,7 @@
 const db = require("../database/db")
 
 module.exports = async function loadLoja(req, res, next) {
+
   try {
 
     /* ===============================

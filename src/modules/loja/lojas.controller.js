@@ -64,6 +64,7 @@ exports.todas = async (req, res) => {
    CRIAR
 ================================ */
 exports.criar = async (req, res) => {
+
   try {
     const empresaId =
       req.user.empresa_id

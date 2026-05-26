@@ -122,11 +122,8 @@ exports.criar = async (
 
 await planoService
   .validarLimiteLojas(
-
     client,
-
     empresaId
-
   )
 
 console.log(

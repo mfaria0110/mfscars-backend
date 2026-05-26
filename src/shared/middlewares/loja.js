@@ -1,25 +1,23 @@
 module.exports = (req, res, next) => {
+
   try {
+
     const usuario = req.user;
 
     /*
-      👑 MASTER → não precisa loja
+      👑 MASTER → ignora loja
     */
+
     if (usuario?.master === true) {
       return next();
     }
 
     /*
-      🏢 ADMIN → não precisa loja
+      TODOS OS DEMAIS
     */
-    if (usuario?.tipo === "admin") {
-      return next();
-    }
 
-    /*
-      👤 USUÁRIO → precisa loja
-    */
     if (!req.loja) {
+
       return res.status(400).json({
         erro: "Loja obrigatória"
       });
@@ -30,7 +28,11 @@ module.exports = (req, res, next) => {
     next();
 
   } catch (e) {
-    console.error("ERRO MIDDLEWARE LOJA:", e);
+
+    console.error(
+      "ERRO MIDDLEWARE LOJA:",
+      e
+    );
 
     return res.status(500).json({
       erro: "Erro ao validar loja"

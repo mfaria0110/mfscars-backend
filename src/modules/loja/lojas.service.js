@@ -23,7 +23,7 @@ async function validarSenha(usuarioId, senha, client) {
 }
 
 /* ===============================
-   LISTAR (SEM TRANSACTION) MF1
+   LISTAR (SEM TRANSACTION) MF2
 ================================ */
 exports.listar = async (user, lojaId) => {
 

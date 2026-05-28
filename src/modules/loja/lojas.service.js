@@ -518,19 +518,112 @@ exports.excluir = async (id, empresaId, usuario, senha) => {
       WHERE loja_id = $1
     `, [id])
 
-    await client.query(`DELETE FROM loja_plano WHERE loja_id = $1`, [id])
-    await client.query(`DELETE FROM lead WHERE loja_id = $1`, [id])
-    await client.query(`DELETE FROM venda WHERE loja_id = $1`, [id])
+/* =========================
+   COBRANÇAS
+========================= */
 
-    await client.query(`DELETE FROM veiculo WHERE loja_id = $1`, [id])
+await client.query(`
+  DELETE FROM loja_cobranca
+  WHERE loja_plano_id IN (
+    SELECT id
+    FROM loja_plano
+    WHERE loja_id = $1
+  )
+`, [id])
+
+/* =========================
+   PLANOS
+========================= */
+
+await client.query(`
+  DELETE FROM loja_plano
+  WHERE loja_id = $1
+`, [id])
+
+/* =========================
+   LEADS
+========================= */
+
+await client.query(`
+  DELETE FROM lead
+  WHERE loja_id = $1
+`, [id])
+
+/* =========================
+   VENDA ENTRADA
+========================= */
+
+await client.query(`
+  DELETE FROM venda_entrada
+  WHERE venda_id IN (
+    SELECT id
+    FROM venda
+    WHERE loja_id = $1
+  )
+`, [id])
+
+/* =========================
+   VENDAS
+========================= */
+
+await client.query(`
+  DELETE FROM venda
+  WHERE loja_id = $1
+`, [id])
+
+    /* =========================
+   VEICULO VIEW
+========================= */
+
+await client.query(`
+  DELETE FROM veiculo_view
+  WHERE loja_id = $1
+`, [id])
+
+/* =========================
+   VEÍCULOS
+========================= */
+
+await client.query(`
+  DELETE FROM veiculo
+  WHERE loja_id = $1
+`, [id])
+
+    
 
     await client.query(`DELETE FROM usuario_loja WHERE loja_id = $1`, [id])
 
-    if (usuariosParaExcluir.length) {
-      await client.query(`
-        DELETE FROM usuario WHERE id = ANY($1)
-      `, [usuariosParaExcluir])
-    }
+if (usuariosParaExcluir.length) {
+
+  /* =========================
+     ACEITE TERMOS
+  ========================= */
+
+  await client.query(`
+    DELETE FROM usuario_aceite_termo
+    WHERE usuario_id = ANY($1)
+  `, [usuariosParaExcluir])
+
+  /* =========================
+     ROLES
+  ========================= */
+
+  await client.query(`
+    DELETE FROM usuario_role
+    WHERE usuario_id = ANY($1)
+  `, [usuariosParaExcluir])
+
+  /* =========================
+     USUÁRIOS
+  ========================= */
+
+  await client.query(`
+    DELETE FROM usuario
+    WHERE id = ANY($1)
+  `, [usuariosParaExcluir])
+}
+
+
 
     const r = await client.query(`
       DELETE FROM loja

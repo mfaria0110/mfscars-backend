@@ -291,18 +291,22 @@ async function validarLimiteVendedores(
   }
 
   const total =
-    await client.query(`
+  await client.query(`
 
-      SELECT
-        COUNT(*)::INTEGER AS total
+    SELECT
+      COUNT(*)::INTEGER AS total
 
-      FROM usuario
+    FROM usuario_loja ul
 
-      WHERE
-        loja_id = $1
-        AND master = false
+    JOIN usuario u
+      ON u.id = ul.usuario_id
 
-    `, [lojaId])
+    WHERE
+      ul.loja_id = $1
+      AND ul.ativo = true
+      AND u.master = false
+
+  `, [lojaId])
 
   const usados =
     Number(

@@ -198,13 +198,12 @@ const r = await client.query(`
     facebook,
     site,
     horario_funcionamento,
-    plano_id,
     status,
     logo
   )
   VALUES (
     $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-    $11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+    $11,$12,$13,$14,$15,$16,$17,$18,$19
   )
   RETURNING *
 `, [
@@ -225,7 +224,6 @@ const r = await client.query(`
   dados.facebook || null,
   dados.site || null,
   dados.horario_funcionamento || null,
-  dados.plano_id || null,
   dados.status || "ATIVO",
   dados.logo || null
 ])

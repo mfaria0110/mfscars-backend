@@ -231,6 +231,72 @@ const r = await client.query(`
 const novaLoja =
   r.rows[0]
 
+  /* =========================
+   PLANO FREE PADRÃO
+========================= */
+
+const planoFree =
+  await client.query(`
+
+    SELECT id
+
+    FROM plano
+
+    WHERE
+      LOWER(nome) = 'free'
+      AND ativo = true
+
+    LIMIT 1
+
+  `)
+
+if (!planoFree.rows.length) {
+
+  throw new Error(
+    "Plano FREE não encontrado"
+  )
+}
+
+const planoId =
+  planoFree.rows[0].id
+
+await client.query(`
+
+  INSERT INTO loja_plano (
+
+    loja_id,
+    plano_id,
+    status,
+    data_inicio,
+    ciclo_inicio,
+    ciclo_fim,
+    gateway,
+    forma_pagamento,
+    valor_pago,
+    vendidos_ciclo
+
+  )
+
+  VALUES (
+
+    $1,
+    $2,
+    'ativo',
+    NOW(),
+    NOW(),
+    NOW() + INTERVAL '10 years',
+    'interno',
+    'gratis',
+    0,
+    0
+
+  )
+
+`, [
+  novaLoja.id,
+  planoId
+])
+
 /* =========================
    VINCULAR USUÁRIO CRIADOR
 ========================= */

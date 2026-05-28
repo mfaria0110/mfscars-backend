@@ -109,8 +109,7 @@ exports.todas = async (user) => {
     usuarioId,
     lojaId,
     dados
-  )
-   => {
+  ) => {
 
   const client = await db.connect()
 

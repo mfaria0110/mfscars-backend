@@ -147,50 +147,63 @@ async function validarLimiteVeiculos(
 
 async function validarLimiteLojas(
   client,
-  empresaId
+  lojaId
 ) {
 
   /* =========================
-     SOMA LIMITES DOS PLANOS
+     PLANO DA LOJA ATUAL
   ========================= */
 
-  const limites =
+  const plano =
+    await getPlanoAtivo(
+      client,
+      lojaId
+    )
+
+  if (!plano) {
+
+    throw new Error(
+      "Nenhum plano ativo"
+    )
+  }
+
+  /* =========================
+     ILIMITADO
+  ========================= */
+
+  if (
+    plano.limite_lojas === null
+  ) {
+
+    return true
+  }
+
+  /* =========================
+     EMPRESA DA LOJA
+  ========================= */
+
+  const loja =
     await client.query(`
 
-      SELECT
+      SELECT empresa_id
 
-        COALESCE(
-          SUM(p.limite_lojas),
-          0
-        )::INTEGER AS limite_total
+      FROM loja
 
-      FROM loja_plano lp
+      WHERE id = $1
 
-      JOIN plano p
-        ON p.id = lp.plano_id
+      LIMIT 1
 
-      JOIN loja l
-        ON l.id = lp.loja_id
+    `, [lojaId])
 
-      WHERE
-        l.empresa_id = $1
-        AND lp.status = 'ativo'
+  if (!loja.rows.length) {
 
-    `, [empresaId])
+    throw new Error(
+      "Loja não encontrada"
+    )
+  }
 
-
-    const limiteBruto =
-      limites.rows[0]
-        ?.limite_total
-
-    if (limiteBruto === null) {
-
-      return true
-    }
-
-    const limite =
-      Number(limiteBruto || 0)
-
+  const empresaId =
+    loja.rows[0].empresa_id
 
   /* =========================
      TOTAL LOJAS EMPRESA
@@ -204,22 +217,34 @@ async function validarLimiteLojas(
 
       FROM loja
 
-      WHERE empresa_id = $1
+      WHERE
+        empresa_id = $1
+        AND LOWER(status) = 'ativo'
 
     `, [empresaId])
 
-  const usados =
+  const usadas =
     Number(
-      total.rows[0]
-        ?.total || 0
+      total.rows[0]?.total || 0
     )
+
+  const limite =
+    Number(
+      plano.limite_lojas || 0
+    )
+
+  console.log({
+    empresaId,
+    usadas,
+    limite
+  })
 
   /* =========================
      VALIDAÇÃO
   ========================= */
 
   if (
-    usados >= limite
+    usadas >= limite
   ) {
 
     throw new Error(

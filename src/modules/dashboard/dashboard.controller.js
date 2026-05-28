@@ -50,11 +50,13 @@ exports.dados = async (req, res) => {
       SELECT 
         p.nome,
         p.limite_veiculos,
-        lp.usados
+        lp.vendidos_ciclo
       FROM loja_plano lp
-      JOIN plano p ON p.id = lp.plano_id
-      WHERE lp.loja_id = $1
-      AND lp.status = 'ativo'
+      JOIN plano p
+        ON p.id = lp.plano_id
+      WHERE
+        lp.loja_id = $1
+        AND lp.status = 'ativo'
       ORDER BY lp.data_inicio DESC
       LIMIT 1
     `, [lojaId]);
@@ -63,9 +65,20 @@ exports.dados = async (req, res) => {
 
       const p = planoRes.rows[0];
 
-      const limite = p.limite_veiculos;
-      const usados = p.usados;
-      const restante = Math.max(0, limite - usados);
+      const limite =
+        Number(p.limite_veiculos || 0)
+
+      const vendidosCiclo =
+        Number(p.vendidos_ciclo || 0)
+
+      const ativos =
+        Number(veiculos.rows[0].total || 0)
+
+      const usados =
+        ativos + vendidosCiclo
+
+      const restante =
+        Math.max(0, limite - usados)
 
       let alerta = null;
 

@@ -69,6 +69,11 @@ exports.criar = async (req, res) => {
     const empresaId =
       req.user.empresa_id
 
+    const lojaId =
+      req.headers["x-loja-id"]
+        ? Number(req.headers["x-loja-id"])
+        : null
+
     console.log(
       "REQ BODY CREATE:",
       req.body
@@ -94,11 +99,12 @@ exports.criar = async (req, res) => {
     )
 
 const data =
-  await service.criar(
-    empresaId,
-    req.user.id,
-    dados
-  )
+    await service.criar(
+      empresaId,
+      req.user.id,
+      lojaId,
+      dados
+    )
 
     res.json(data)
 

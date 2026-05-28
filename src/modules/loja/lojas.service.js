@@ -104,11 +104,13 @@ exports.todas = async (user) => {
 /* ===============================
    CRIAR (COM TRANSACTION)
 ================================ */
-exports.criar = async (
-  empresaId,
-  usuarioId,
-  dados
-) => {
+  exports.criar = async (
+    empresaId,
+    usuarioId,
+    lojaId,
+    dados
+  )
+   => {
 
   const client = await db.connect()
 
@@ -116,14 +118,14 @@ exports.criar = async (
 
     await client.query("BEGIN")
 
-    /* =========================
+/* =========================
    VALIDAR LIMITE LOJAS
 ========================= */
 
 await planoService
   .validarLimiteLojas(
     client,
-    empresaId
+    lojaId
   )
 
 console.log(
@@ -512,10 +514,10 @@ exports.excluir = async (id, empresaId, usuario, senha) => {
     await client.query(`DELETE FROM veiculo_opcional WHERE loja_id = $1`, [id])
     await client.query(`DELETE FROM veiculo_proprietario WHERE loja_id = $1`, [id])
 
-await client.query(`
-  DELETE FROM loja_clausula
-  WHERE loja_id = $1
-`, [id])
+    await client.query(`
+      DELETE FROM loja_clausula
+      WHERE loja_id = $1
+    `, [id])
 
     await client.query(`DELETE FROM loja_plano WHERE loja_id = $1`, [id])
     await client.query(`DELETE FROM lead WHERE loja_id = $1`, [id])

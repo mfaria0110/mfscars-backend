@@ -47,18 +47,17 @@ exports.dados = async (req, res) => {
     let plano = null;
 
     const planoRes = await db.query(`
-      SELECT 
-        p.nome,
-        p.limite_veiculos,
-        lp.vendidos_ciclo
-      FROM loja_plano lp
-      JOIN plano p
-        ON p.id = lp.plano_id
-      WHERE
-        lp.loja_id = $1
-        AND lp.status = 'ativo'
-      ORDER BY lp.data_inicio DESC
-      LIMIT 1
+SELECT 
+  p.nome,
+  p.limite_veiculos
+FROM loja_plano lp
+JOIN plano p
+  ON p.id = lp.plano_id
+WHERE
+  lp.loja_id = $1
+  AND lp.status = 'ativo'
+ORDER BY lp.data_inicio DESC
+LIMIT 1
     `, [lojaId]);
 
     if (planoRes.rows.length) {
@@ -68,17 +67,16 @@ exports.dados = async (req, res) => {
       const limite =
         Number(p.limite_veiculos || 0)
 
-      const vendidosCiclo =
-        Number(p.vendidos_ciclo || 0)
+const usados_veiculos =
+  Number(
+    veiculos.rows[0].total || 0
+  )
 
-      const ativos =
-        Number(veiculos.rows[0].total || 0)
-
-      const usados =
-        ativos + vendidosCiclo
-
-      const restante =
-        Math.max(0, limite - usados)
+const restante =
+  Math.max(
+    0,
+    limite - usados_veiculos
+  )
 
       let alerta = null;
 
@@ -88,11 +86,13 @@ exports.dados = async (req, res) => {
       plano = {
         nome: p.nome,
         limite,
-        usados,
+usados_veiculos,
         restante,
-        percentual: limite > 0
-          ? Math.round((usados / limite) * 100)
-          : 0,
+percentual: limite > 0
+  ? Math.round(
+      (usados_veiculos / limite) * 100
+    )
+  : 0,
         alerta
       };
     }

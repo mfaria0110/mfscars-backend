@@ -102,23 +102,53 @@ router.get(
       const result =
         await db.query(
           `
-        SELECT
-          lp.*,
+SELECT
+  lp.id,
+  lp.loja_id,
+  lp.plano_id,
+  lp.status,
+  lp.gateway,
+  lp.forma_pagamento,
+  lp.data_inicio,
+  lp.data_fim,
+  lp.ciclo_inicio,
+  lp.ciclo_fim,
+  lp.valor_pago,
+  lp.founders,
 
-          p.nome,
-          p.preco,
+  p.nome,
+  p.preco,
 
-          p.limite_veiculos,
-          p.limite_lojas,
-          p.limite_vendedores,
-          p.desconto_founders
-          FROM loja_plano lp
-          JOIN plano p
-            ON p.id = lp.plano_id
-          WHERE lp.loja_id = $1
-          AND lp.status = 'ativo'
-          ORDER BY lp.data_inicio DESC
-          LIMIT 1
+  p.limite_veiculos,
+  p.limite_lojas,
+  p.limite_vendedores,
+  p.desconto_founders,
+
+  (
+    SELECT COUNT(*)
+    FROM veiculo v
+    WHERE v.loja_id = lp.loja_id
+    AND v.status = 'disponivel'
+  ) AS usados_veiculos,
+
+  (
+    SELECT COUNT(*)
+    FROM loja l
+    WHERE l.empresa_id = (
+      SELECT empresa_id
+      FROM loja
+      WHERE id = lp.loja_id
+    )
+  ) AS usados_lojas,
+
+  (
+    SELECT COUNT(*)
+    FROM usuario_loja ul
+    WHERE ul.loja_id = lp.loja_id
+    AND ul.ativo = true
+    AND ul.perfil = 'vendedor'
+  ) AS usados_vendedores
+
         `,
           [loja_id]
         )

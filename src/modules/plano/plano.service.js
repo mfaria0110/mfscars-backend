@@ -99,22 +99,12 @@ async function validarLimiteVeiculos(
       ativos.rows[0].total || 0
     )
 
-  /* =========================
-     VENDIDOS CICLO
-  ========================= */
-
-  const vendidosCiclo =
-    Number(
-      plano.vendidos_ciclo || 0
-    )
-
-  /* =========================
+/* =========================
      TOTAL CONSUMIDO
   ========================= */
 
-  const consumidos =
-    ativosTotal +
-    vendidosCiclo
+ const consumidos =
+  ativosTotal
 
   const limite =
     Number(
@@ -122,12 +112,11 @@ async function validarLimiteVeiculos(
     )
 
 
-  console.log({
-    ativosTotal,
-    vendidosCiclo,
-    consumidos,
-    limite
-  })
+console.log({
+  ativosTotal,
+  consumidos,
+  limite
+})
 
   if (
     consumidos >= limite
@@ -330,29 +319,6 @@ async function validarLimiteVendedores(
   return plano
 }
 
-/* =========================================
-   CONSUMIR VEÍCULO
-========================================= */
-
-async function consumirVeiculo(
-  client,
-  lojaId
-) {
-
-  return await validarLimiteVeiculos(
-    client,
-    lojaId
-  )
-}
-
-/* =========================================
-   LIBERAR VEÍCULO
-========================================= */
-
-async function liberarVeiculo() {
-
-  return true
-}
 
 /* =========================================
    VALIDAR STATUS
@@ -421,10 +387,6 @@ module.exports = {
   validarLimiteLojas,
 
   validarLimiteVendedores,
-
-  consumirVeiculo,
-
-  liberarVeiculo,
 
   validarPlanoAtivo
 }

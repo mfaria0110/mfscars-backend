@@ -531,28 +531,8 @@ if (opcionais.length) {
         `, valores);
       }
 
-    /* ===============================
-       📈 INCREMENTAR USO
-    ============================== */
-await planoService.consumirVeiculo(
-  client,
-  lojaId
-)
 
-
-    /* ===============================
-       📜 LOG
-    ============================== */
-
-await client.query(`
-      INSERT INTO plano_consumo_log (loja_id, veiculo_id, acao)
-      VALUES ($1, $2, 'CRIACAO_VEICULO')
-`, [lojaId, veiculoId]);
-
-return r.rows[0];
-});
-
-  /* ===============================
+/* ===============================
      ♻️ INVALIDAR CACHE
   ============================== */
 

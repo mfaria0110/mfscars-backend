@@ -483,6 +483,41 @@ exports.excluir = async (id, empresaId, usuario, senha) => {
 
     await client.query("BEGIN")
 
+    /* =========================
+   BLOQUEAR EXCLUSÃO
+   DA PRÓPRIA LOJA
+    ========================= */
+
+    const usuarioLoja =
+      await client.query(`
+
+        SELECT id
+
+        FROM usuario_loja
+
+        WHERE
+          usuario_id = $1
+          AND loja_id = $2
+          AND ativo = true
+
+        LIMIT 1
+
+      `, [
+        usuario.id,
+        id
+      ])
+
+    if (
+      usuarioLoja.rows.length
+    ) {
+
+      throw new Error(
+        "Você não pode excluir a loja vinculada ao seu usuário"
+      )
+    }
+
+
+
     /* 🔥 USUÁRIOS */
     const usuarios = await client.query(`
       SELECT usuario_id FROM usuario_loja WHERE loja_id = $1

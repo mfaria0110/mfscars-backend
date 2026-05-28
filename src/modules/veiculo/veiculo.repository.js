@@ -542,7 +542,9 @@ if (dashboardCache.cache) {
   dashboardCache.cache.delete(`${empresaId}_${lojaId}`);
 }
 
-return resultado;
+return r.rows[0];
+
+  });
 };
 
 exports.atualizar = async (id, empresaId, lojaId, dados) => {

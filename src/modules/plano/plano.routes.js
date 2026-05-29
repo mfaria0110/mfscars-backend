@@ -195,38 +195,38 @@ router.post(
         [loja_id]
       )
 
-      const result =
-        await client.query(
-          `
-          INSERT INTO loja_plano (
-            loja_id,
-            plano_id,
-            data_inicio,
-            status,
-            valor_pago,
-            data_pagamento,
-            usados
-          )
-          VALUES (
-            $1,
-            $2,
-            NOW(),
-            'ativo',
-            (
-              SELECT preco
-              FROM plano
-              WHERE id = $2
-            ),
-            NOW(),
-            0
-          )
-          RETURNING *
-        `,
-          [
-            loja_id,
-            plano_id
-          ]
-        )
+ const result =
+  await client.query(
+    `
+    INSERT INTO loja_plano (
+      loja_id,
+      plano_id,
+      data_inicio,
+      ciclo_inicio,
+      status,
+      valor_pago,
+      data_pagamento
+    )
+    VALUES (
+      $1,
+      $2,
+      NOW(),
+      NOW(),
+      'ativo',
+      (
+        SELECT preco
+        FROM plano
+        WHERE id = $2
+      ),
+      NOW()
+    )
+    RETURNING *
+    `,
+    [
+      loja_id,
+      plano_id
+    ]
+  )
 
       await client.query(
         "COMMIT"

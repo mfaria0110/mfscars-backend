@@ -51,19 +51,22 @@ exports.criar = async (req, res) => {
 exports.listar = async (req, res) => {
   try {
 
-    const master = isMaster(req.user)
+const master = isMaster(req.user)
 
-    const empresaId = master
-      ? null
-      : req.user.empresa_id
+const empresaId = master
+  ? null
+  : req.user.empresa_id
 
-    console.log("🔥 LISTAR → master:", master)
-    console.log("🔥 LISTAR → empresaId:", empresaId)
+console.log("🔥 LOJA ID:", req.loja_id)
+console.log("🔥 EMPRESA ID:", empresaId)
+console.log("🔥 MASTER:", master)
+console.log("🔥 USER:", req.user?.id)
 
-    const data = await service.listar({
-      empresaId,
-      isMaster: master
-    })
+const data = await service.listar({
+  empresaId,
+  lojaId: req.loja_id,
+  isMaster: master
+})
 
     res.json(data)
 

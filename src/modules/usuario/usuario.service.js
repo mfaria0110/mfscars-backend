@@ -135,31 +135,37 @@ exports.criar = async (empresaId, dados) => {
 /* ===============================
    LISTAR
 ================================ */
-exports.listar = async ({ empresaId, isMaster }) => {
+exports.listar = async ({
+  empresaId,
+  lojaId,
+  isMaster
+}) => {
 
   try {
 
-    let query = `
-      SELECT
-        u.id,
-        u.nome,
-        u.email,
-        u.tipo,
-        u.ativo,
-        u.empresa_id
-      FROM usuario u
-    `
+let query = `
+  SELECT DISTINCT
+    u.id,
+    u.nome,
+    u.email,
+    u.tipo,
+    u.ativo,
+    u.empresa_id
+  FROM usuario u
+  INNER JOIN usuario_loja ul
+    ON ul.usuario_id = u.id
+`
 
-    const params = []
+const params = []
 
-    // 🔥 se NÃO for master → filtra por empresa
-    if (!isMaster) {
-      params.push(empresaId)
+if (!isMaster) {
 
-      query += `
-        WHERE u.empresa_id = $${params.length}
-      `
-    }
+  params.push(lojaId)
+
+  query += `
+    WHERE ul.loja_id = $${params.length}
+  `
+}
 
     query += `
       ORDER BY u.nome

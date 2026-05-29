@@ -140,20 +140,32 @@ module.exports = async (
 
     next()
 
-  } catch (e) {
+} catch (e) {
 
-    console.error(
-      "AUTH ERROR:",
-      e
-    )
+  console.error(
+    "AUTH ERROR:",
+    e
+  )
 
-    return res.status(500).json({
+  if (e.name === "TokenExpiredError") {
 
-      erro:
-        e.message ||
-
-        "Erro na autenticação"
-
+    return res.status(401).json({
+      erro: "jwt expired"
     })
+
   }
+
+  if (e.name === "JsonWebTokenError") {
+
+    return res.status(401).json({
+      erro: "token inválido"
+    })
+
+  }
+
+  return res.status(401).json({
+    erro: "não autorizado"
+  })
+}
+  
 }

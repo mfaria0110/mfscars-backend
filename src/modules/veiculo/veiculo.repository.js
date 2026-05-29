@@ -352,21 +352,6 @@ if (!placa) {
   ? parseInt(placa.replace(/\D/g, '').slice(-1))
   : null;
 
-console.log("======== DADOS VEICULO ========")
-console.log({
-  marca,
-  modelo,
-  anoVal,
-  kmVal,
-  valorOriginal: valor,
-  valorVal,
-  placa,
-  placaFinalVal,
-  renavam
-})
-console.log("==============================")
-
-
     /* ===============================
        🔒 LOCK + VALIDAR PLANO
     ============================== */

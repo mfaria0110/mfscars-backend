@@ -143,29 +143,29 @@ exports.listar = async ({
 
   try {
 
-let query = `
-  SELECT DISTINCT
-    u.id,
-    u.nome,
-    u.email,
-    u.tipo,
-    u.ativo,
-    u.empresa_id
-  FROM usuario u
-  INNER JOIN usuario_loja ul
-    ON ul.usuario_id = u.id
-`
+    let query = `
+      SELECT DISTINCT
+        u.id,
+        u.nome,
+        u.email,
+        u.tipo,
+        u.ativo,
+        u.empresa_id
+      FROM usuario u
+      INNER JOIN usuario_loja ul
+        ON ul.usuario_id = u.id
+    `
 
-const params = []
+    const params = []
 
-if (!isMaster) {
+    if (!isMaster) {
 
-  params.push(lojaId)
+      params.push(lojaId)
 
-  query += `
-    WHERE ul.loja_id = $${params.length}
-  `
-}
+      query += `
+        WHERE ul.loja_id = $${params.length}
+      `
+    }
 
     query += `
       ORDER BY u.nome
@@ -174,18 +174,29 @@ if (!isMaster) {
     console.log("🔥 SQL:", query)
     console.log("🔥 PARAMS:", params)
 
-    const result = await db.query(query, params)
+    const result =
+      await db.query(
+        query,
+        params
+      )
 
-    console.log("🔥 RESULTADO:", result.rows.length)
+    console.log(
+      "🔥 RESULTADO:",
+      result.rows.length
+    )
 
     return result.rows
 
-  } catch (e) {
-    console.error("💣 ERRO SQL USUARIO:", e)
-    throw e
+  } catch (error) {
+
+    console.error(
+      "🔥 ERRO LISTAR:",
+      error
+    )
+
+    throw error
   }
 }
-
 
 /* ===============================
    ATUALIZAR

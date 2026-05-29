@@ -121,13 +121,18 @@ exports.criar = async (req, res) => {
 
     res.json(data)
 
-  } catch (e) {
-    console.error("Erro criar veículo:", e)
+  } 
 
-    res.status(500).json({
-      erro: e.message
-    })
-  }
+catch (e) {
+  console.error("🔥 ERRO CRIAR VEICULO")
+  console.error(e)
+  console.error(e.stack)
+
+  res.status(500).json({
+    erro: e.message
+  })
+}
+  
 }
 
 /* ===============================

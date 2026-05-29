@@ -405,9 +405,62 @@ exports.criar = async (empresaId, lojaId, dados) => {
   const kmVal = quilometragem ? parseInt(quilometragem) : null;
   const valorVal = valor ? parseFloat(valor) : null;
 
+
+console.log("======== DADOS VEICULO ========")
+console.log({
+  valorOriginal: valor,
+  valorVal,
+  kmVal,
+  placa,
+  placaFinalVal
+})
+console.log("==============================")
+
+
+  /* ===============================
+   VALIDAÇÃO VALOR
+============================== */
+
+if (!valorVal || valorVal <= 0) {
+  throw new Error(
+    "Valor do veículo é obrigatório"
+  )
+}
+
+if (valorVal > 9999999999.99) {
+  throw new Error(
+    "Valor do veículo excede o limite permitido"
+  )
+}
+
+/* ===============================
+   PLACA OBRIGATÓRIA
+============================== */
+
+if (!placa) {
+  throw new Error(
+    "Placa é obrigatória"
+  )
+}
+
   const placaFinalVal = placa
   ? parseInt(placa.replace(/\D/g, '').slice(-1))
   : null;
+
+console.log("======== DADOS VEICULO ========")
+console.log({
+  marca,
+  modelo,
+  anoVal,
+  kmVal,
+  valorOriginal: valor,
+  valorVal,
+  placa,
+  placaFinalVal,
+  renavam
+})
+console.log("==============================")
+
 
     /* ===============================
        🔒 LOCK + VALIDAR PLANO
@@ -545,6 +598,9 @@ if (dashboardCache.cache) {
 return r.rows[0];
 
   });
+
+  return resultado;
+
 };
 
 exports.atualizar = async (id, empresaId, lojaId, dados) => {

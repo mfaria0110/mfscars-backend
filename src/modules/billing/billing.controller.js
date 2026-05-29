@@ -1240,8 +1240,6 @@ SET
 
   status = 'ativo',
 
-  usados = 0,
-
   founders = $2,
 
   desconto_percentual = $3,
@@ -1256,6 +1254,7 @@ SET
     NOW() + INTERVAL '30 days'
 
 WHERE id = $1
+
     `,
  [
   cobrancaData.loja_plano_id,
@@ -1354,8 +1353,6 @@ UPDATE loja_plano
 SET
 
   status = 'ativo',
-
-  usados = 0,
 
   founders = $2,
 
@@ -1617,22 +1614,25 @@ const dadosPlano =
           */
 
           await db.query(`
-            UPDATE loja_plano
-            SET
+UPDATE loja_plano
+SET
 
-              status = 'ativo',
+  status = 'ativo',
 
-              usados = 0,
+  founders = $2,
 
-              founders = $2,
+  desconto_percentual = $3,
 
-              desconto_percentual = $3,
+  valor_original = $4,
 
-              valor_original = $4,
-              data_pagamento = NOW(),
-              ciclo_inicio = NOW(),
-              ciclo_fim = NOW() + INTERVAL '30 days'
-            WHERE subscription_id = $1
+  data_pagamento = NOW(),
+
+  ciclo_inicio = NOW(),
+
+  ciclo_fim =
+    NOW() + INTERVAL '30 days'
+
+WHERE subscription_id = $1
           `, 
 
             [

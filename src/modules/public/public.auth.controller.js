@@ -285,43 +285,41 @@ exports.cadastro = async (
     const plano_id =
       planoRes.rows[0].id
 
-    await client.query(`
-      INSERT INTO loja_plano (
-        loja_id,
-        plano_id,
-        data_inicio,
-        ciclo_inicio,
-        ciclo_fim,
-        status,
-        gateway,
-        valor_pago,
-        forma_pagamento,
-        data_pagamento,
-        aviso_3_dias,
-        aviso_vencido,
-        usados,
-        criado_em
-      )
-      VALUES (
-        $1,
-        $2,
-        NOW(),
-        NOW(),
-        NOW() + INTERVAL '3650 days',
-        'ativo',
-        'interno',
-        0.00,
-        'gratis',
-        NOW(),
-        false,
-        false,
-        0,
-        NOW()
-      )
-    `, [
-      loja_id,
-      plano_id
-    ])
+await client.query(`
+  INSERT INTO loja_plano (
+    loja_id,
+    plano_id,
+    data_inicio,
+    ciclo_inicio,
+    ciclo_fim,
+    status,
+    gateway,
+    valor_pago,
+    forma_pagamento,
+    data_pagamento,
+    aviso_3_dias,
+    aviso_vencido,
+    criado_em
+  )
+  VALUES (
+    $1,
+    $2,
+    NOW(),
+    NOW(),
+    NOW() + INTERVAL '3650 days',
+    'ativo',
+    'interno',
+    0.00,
+    'gratis',
+    NOW(),
+    false,
+    false,
+    NOW()
+  )
+`, [
+  loja_id,
+  plano_id
+])
 
     /* ===============================
        RELAÇÃO USUÁRIO LOJA

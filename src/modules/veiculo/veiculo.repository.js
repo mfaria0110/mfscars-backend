@@ -29,90 +29,6 @@ function normalizarFoto(foto) {
   return `${BASE_URL}/uploads/${foto}`
 }
 
-exports.listar = async (filtros = {}) => {
-
-  if (!filtros.loja_id || Number.isNaN(Number(filtros.loja_id))) {
-    return {
-      page: 1,
-      limit: 12,
-      total: 0,
-      totalPages: 0,
-      data: []
-    };
-  }
-
-  const page = parseInt(filtros.page) || 1;
-  const limit = parseInt(filtros.limit) || 12;
-  const offset = (page - 1) * limit;
-
-  const valores = [];
-
-  let where = `WHERE 1=1`;
-
-  if (filtros.empresa_id) {
-    valores.push(filtros.empresa_id);
-    where += ` AND v.empresa_id = $${valores.length}`;
-  }
-
-  if (filtros.loja_id) {
-    valores.push(filtros.loja_id);
-    where += ` AND v.loja_id = $${valores.length}`;
-  }
-
-  const totalQuery = `
-    SELECT COUNT(*)
-    FROM veiculo v
-    ${where}
-  `;
-
-  const totalResult = await db.query(totalQuery, valores);
-  const total = parseInt(totalResult.rows[0].count);
-  const totalPages = Math.ceil(total / limit);
-
-  let query = `
-    SELECT 
-      v.*,
-      l.nome as loja,
-      l.cidade,
-      l.estado,
-
-      COALESCE((
-        SELECT url
-        FROM veiculo_foto
-        WHERE veiculo_id = v.id
-        ORDER BY principal DESC, id ASC
-        LIMIT 1
-      ), 'sem-foto.jpg') foto
-
-    FROM veiculo v
-    JOIN loja l ON l.id = v.loja_id
-
-    ${where}
-
-    ORDER BY v.data_cadastro DESC
-  `;
-
-  valores.push(limit);
-  valores.push(offset);
-
-  query += ` LIMIT $${valores.length - 1} OFFSET $${valores.length}`;
-
-  const r = await db.query(query, valores);
-
-  const data = r.rows.map(v => ({
-    ...v,
-    foto: normalizarFoto(v.foto)
-  }));
-
-  return {
-    page,
-    limit,
-    total,
-    totalPages,
-    data
-  };
-}
-
 exports.marcas = async () => {
 
   try {
@@ -406,18 +322,7 @@ exports.criar = async (empresaId, lojaId, dados) => {
   const valorVal = valor ? parseFloat(valor) : null;
 
 
-console.log("======== DADOS VEICULO ========")
-console.log({
-  valorOriginal: valor,
-  valorVal,
-  kmVal,
-  placa,
-  placaFinalVal
-})
-console.log("==============================")
-
-
-  /* ===============================
+/* ===============================
    VALIDAÇÃO VALOR
 ============================== */
 

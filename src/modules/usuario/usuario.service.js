@@ -170,7 +170,6 @@ exports.listar = async ({
     query += `
       ORDER BY u.nome
     `
-
     console.log("🔥 SQL:", query)
     console.log("🔥 PARAMS:", params)
 

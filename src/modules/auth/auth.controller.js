@@ -127,7 +127,7 @@ if (user.master) {
     };
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "3m",
+      expiresIn: "2h",
       issuer: "mfsCars"
     });
 
@@ -312,7 +312,7 @@ const accessToken = jwt.sign(
   payload,
   process.env.JWT_SECRET,
   {
-    expiresIn: "3m",
+    expiresIn: "2h",
     issuer: "mfsCars"
   }
 )
@@ -538,7 +538,7 @@ if (
       payload,
       process.env.JWT_SECRET,
       {
-        expiresIn: "3m",
+        expiresIn: "2h",
         issuer: "mfsCars"
       }
     )

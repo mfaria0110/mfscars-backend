@@ -99,29 +99,79 @@ router.get(
           })
       }
 
+
+console.log("===== PLANO ATUAL =====")
+console.log("req.loja_id =", req.loja_id)
+console.log("req.lojaId =", req.lojaId)
+
+
       const result =
         await db.query(
           `
-        SELECT
-          lp.*,
+SELECT
+  lp.*,
 
-          p.nome,
-          p.preco,
+  p.nome,
+  p.preco,
 
-          p.limite_veiculos,
-          p.limite_lojas,
-          p.limite_vendedores,
-          p.desconto_founders
-          FROM loja_plano lp
-          JOIN plano p
-            ON p.id = lp.plano_id
-          WHERE lp.loja_id = $1
-          AND lp.status = 'ativo'
-          ORDER BY lp.data_inicio DESC
-          LIMIT 1
+  p.limite_veiculos,
+  p.limite_lojas,
+  p.limite_vendedores,
+  p.desconto_founders,
+
+  (
+    SELECT COUNT(*)
+    FROM veiculo v
+    WHERE
+      v.loja_id = lp.loja_id
+      AND LOWER(v.status) = 'disponivel'
+  ) AS usados_veiculos,
+
+  (
+    SELECT COUNT(*)
+    FROM usuario_loja ul
+    JOIN usuario u
+      ON u.id = ul.usuario_id
+    WHERE
+      ul.loja_id = lp.loja_id
+      AND ul.ativo = true
+      AND u.master = false
+  ) AS usados_vendedores,
+
+  (
+    SELECT COUNT(*)
+    FROM loja l
+    WHERE
+      l.empresa_id =
+      (
+        SELECT empresa_id
+        FROM loja
+        WHERE id = lp.loja_id
+      )
+      AND LOWER(l.status) = 'ativo'
+  ) AS usados_lojas
+
+FROM loja_plano lp
+
+JOIN plano p
+  ON p.id = lp.plano_id
+
+WHERE
+  lp.loja_id = $1
+  AND lp.status = 'ativo'
+
+ORDER BY lp.data_inicio DESC
+
+LIMIT 1
         `,
           [loja_id]
         )
+
+
+console.log(
+  "RESULTADO:",
+  result.rows[0]
+)        
 
       res.json(
         result.rows[0] ||

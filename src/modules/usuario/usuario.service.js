@@ -1,6 +1,8 @@
 const db = require('../../shared/database/db');
 const bcrypt = require("bcrypt")
-//const buildQueryComLoja = require("../../shared/utils/queryBuilderLoja")
+
+const planoService =
+  require("../plano/plano.service")
 
 /* ===============================
    CRIAR
@@ -22,6 +24,27 @@ exports.criar = async (empresaId, dados) => {
     } = dados
 
     const hash = await bcrypt.hash(senha, 10)
+
+    /* =========================
+   VALIDA LIMITE VENDEDORES
+========================= */
+
+    for (const l of lojas) {
+
+      const lojaId = Number(
+        typeof l === "object"
+          ? l.loja_id
+          : l
+      )
+
+      if (!lojaId) continue
+
+      await planoService
+        .validarLimiteVendedores(
+          client,
+          lojaId
+        )
+    }
 
     /* 🔥 INSERE USUÁRIO */
     const r = await client.query(`

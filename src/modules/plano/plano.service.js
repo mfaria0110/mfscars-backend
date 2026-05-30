@@ -307,6 +307,14 @@ async function validarLimiteVendedores(
       plano.limite_vendedores || 0
     )
 
+
+console.log({
+  lojaId,
+  usados,
+  limite
+})
+
+
   if (
     usados >= limite
   ) {

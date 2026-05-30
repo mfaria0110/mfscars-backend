@@ -320,7 +320,7 @@ console.log({
   ) {
 
     throw new Error(
-      "Limite de vendedores atingido"
+      "Limite de usuários atingido"
     )
   }
 

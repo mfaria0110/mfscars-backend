@@ -12,28 +12,61 @@ async function getPlanoAtivo(
   const result =
     await client.query(`
 
-      SELECT
-        lp.*,
+SELECT
+  lp.*,
 
-        p.nome,
-        p.preco,
+  p.nome,
+  p.preco,
 
-        p.limite_veiculos,
-        p.limite_lojas,
-        p.limite_vendedores
+  p.limite_veiculos,
+  p.limite_lojas,
+  p.limite_vendedores,
+  p.desconto_founders,
 
-      FROM loja_plano lp
+  (
+    SELECT COUNT(*)
+    FROM veiculo v
+    WHERE
+      v.loja_id = lp.loja_id
+      AND LOWER(v.status) = 'disponivel'
+  ) AS usados_veiculos,
 
-      JOIN plano p
-        ON p.id = lp.plano_id
+  (
+    SELECT COUNT(*)
+    FROM usuario_loja ul
+    JOIN usuario u
+      ON u.id = ul.usuario_id
+    WHERE
+      ul.loja_id = lp.loja_id
+      AND ul.ativo = true
+      AND u.master = false
+  ) AS usados_vendedores,
 
-      WHERE
-        lp.loja_id = $1
-        AND lp.status = 'ativo'
+  (
+    SELECT COUNT(*)
+    FROM loja l
+    WHERE
+      l.empresa_id =
+      (
+        SELECT empresa_id
+        FROM loja
+        WHERE id = lp.loja_id
+      )
+      AND LOWER(l.status) = 'ativo'
+  ) AS usados_lojas
 
-      ORDER BY lp.id DESC
+FROM loja_plano lp
 
-      LIMIT 1
+JOIN plano p
+  ON p.id = lp.plano_id
+
+WHERE
+  lp.loja_id = $1
+  AND lp.status = 'ativo'
+
+ORDER BY lp.data_inicio DESC
+
+LIMIT 1
 
     `, [lojaId])
 

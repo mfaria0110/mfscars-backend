@@ -84,7 +84,7 @@ router.get("/loja/:id", async (req, res) => {
     const id = req.params.id;
 
     const lojaRes = await db.query(`
-      SELECT 
+      SELECT
         id,
         nome,
         cidade,
@@ -92,7 +92,9 @@ router.get("/loja/:id", async (req, res) => {
         telefone,
         logo,
         banner,
-        descricao
+        descricao,
+        latitude,
+        longitude
       FROM loja
       WHERE id=$1
     `, [id]);

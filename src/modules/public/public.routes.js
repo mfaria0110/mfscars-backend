@@ -270,11 +270,11 @@ router.get("/veiculos/similares/:id", async (req, res) => {
           )
 
         ORDER BY
-          ABS(
-            COALESCE(v.valor,0)
-            -
-            COALESCE($4,0)
-          )
+        ABS(
+          CAST(v.valor AS numeric)
+          -
+          CAST($4 AS numeric)
+        )
 
         LIMIT 8
       `,

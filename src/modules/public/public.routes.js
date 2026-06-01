@@ -214,48 +214,104 @@ router.get("/leads", async (req, res) => {
 });
 
 router.get("/veiculos/similares/:id", async (req, res) => {
+
   try {
+
     const { id } = req.params;
 
-    const r = await db.query(`
-      SELECT 
-        v.id,
-        v.marca,
-        v.modelo,
-        v.valor,
-        f.url as foto
-      FROM veiculo v
-      LEFT JOIN LATERAL (
-        SELECT url
-        FROM veiculo_foto f
-        WHERE f.veiculo_id = v.id
-        ORDER BY f.principal DESC, f.id ASC
-        LIMIT 1
-      ) f ON true
-      WHERE v.id != $1
-      AND v.status = 'disponivel'
-      ORDER BY v.valor DESC
-      LIMIT 6
-    `, [id]);
+    const veiculoAtual =
+      await db.query(`
+        SELECT
+          id,
+          marca,
+          carroceria,
+          combustivel,
+          valor
+        FROM veiculo
+        WHERE id = $1
+      `, [id]);
 
-const data = r.rows.map(v => ({
-  ...v,
-  foto:
-    v.foto &&
-    v.foto.startsWith("http")
-      ? v.foto
-      : v.foto
-        ? `https://api.mfscars.com.br/uploads/${v.foto}`
-        : `https://api.mfscars.com.br/uploads/sem-foto.jpg`
-}));
+    if (
+      veiculoAtual.rows.length === 0
+    ) {
+      return res.json([]);
+    }
+
+    const atual =
+      veiculoAtual.rows[0];
+
+    const r =
+      await db.query(`
+        SELECT
+          v.id,
+          v.marca,
+          v.modelo,
+          v.valor,
+          f.url as foto
+
+        FROM veiculo v
+
+        LEFT JOIN LATERAL (
+          SELECT url
+          FROM veiculo_foto f
+          WHERE f.veiculo_id = v.id
+          ORDER BY
+            f.principal DESC,
+            f.id ASC
+          LIMIT 1
+        ) f ON true
+
+        WHERE
+          v.id <> $1
+          AND v.status = 'disponivel'
+          AND (
+            v.marca = $2
+            OR v.carroceria = $3
+          )
+
+        ORDER BY
+          ABS(
+            COALESCE(v.valor,0)
+            -
+            COALESCE($4,0)
+          )
+
+        LIMIT 8
+      `,
+      [
+        id,
+        atual.marca,
+        atual.carroceria,
+        atual.valor
+      ]);
+
+    const data =
+      r.rows.map(v => ({
+
+        ...v,
+
+        foto:
+          v.foto &&
+          v.foto.startsWith("http")
+            ? v.foto
+            : v.foto
+              ? `https://api.mfscars.com.br/uploads/${v.foto}`
+              : `https://api.mfscars.com.br/assets/sem-foto.png`
+      }));
 
     res.json(data);
 
   } catch (e) {
+
     console.error(e);
-    res.status(500).json({ erro: "Erro ao buscar similares" });
+
+    res.status(500).json({
+      erro:
+        "Erro ao buscar similares"
+    });
   }
 });
+
 
 router.post("/lead", async (req, res) => {
   try {

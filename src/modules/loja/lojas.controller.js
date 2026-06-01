@@ -1,5 +1,42 @@
 const service = require("./lojas.service");
 
+const cloudinary =
+  require("../../shared/cloudinary");
+
+const fs =
+  require("fs");
+
+function getPublicId(url) {
+
+  try {
+
+    if (
+      !url ||
+      !url.includes("cloudinary")
+    ) {
+      return null;
+    }
+
+    const partes =
+      url.split("/upload/")[1];
+
+    const semVersao =
+      partes.replace(
+        /^v\d+\//,
+        ""
+      );
+
+    return semVersao.replace(
+      /\.[^/.]+$/,
+      ""
+    );
+
+  } catch {
+
+    return null;
+  }
+}
+
 /* ===============================
    LISTAR
 ================================ */
@@ -66,78 +103,169 @@ exports.todas = async (req, res) => {
 exports.criar = async (req, res) => {
 
   try {
+
     const empresaId =
-      req.user.empresa_id
+      req.user.empresa_id;
 
     const lojaId =
       req.headers["x-loja-id"]
-        ? Number(req.headers["x-loja-id"])
-        : null
+        ? Number(
+            req.headers["x-loja-id"]
+          )
+        : null;
 
     console.log(
       "REQ BODY CREATE:",
       req.body
-    )
+    );
 
     console.log(
       "REQ FILE CREATE:",
       req.file
-    )
+    );
 
     const dados = {
       ...req.body
-    }
+    };
 
     if (req.file) {
+
+      const upload =
+        await cloudinary
+          .uploader
+          .upload(
+            req.file.path,
+            {
+              folder:
+                "mfscars/logos"
+            }
+          );
+
       dados.logo =
-        `/uploads/logos/${req.file.filename}`
+        upload.secure_url;
+
+      try {
+
+        fs.unlinkSync(
+          req.file.path
+        );
+
+      } catch {}
     }
 
     console.log(
       "DADOS FINAL CREATE:",
       dados
-    )
+    );
 
-const data =
-    await service.criar(
-      empresaId,
-      req.user.id,
-      lojaId,
-      dados
-    )
+    const data =
+      await service.criar(
+        empresaId,
+        req.user.id,
+        lojaId,
+        dados
+      );
 
-    res.json(data)
+    res.json(data);
 
   } catch (e) {
-    tratarErro(res, e)
+
+    tratarErro(res, e);
+
   }
-}
+};
+
 
 /* ===============================
    ATUALIZAR
 ================================ */
 exports.atualizar = async (req, res) => {
+
   try {
+
     const empresaId =
-      req.user.empresa_id
+      req.user.empresa_id;
 
     console.log(
       "REQ BODY UPDATE:",
       req.body
-    )
+    );
 
     console.log(
       "REQ FILE UPDATE:",
       req.file
-    )
+    );
 
     const dados = {
       ...req.body
-    }
+    };
 
     if (req.file) {
+
+      try {
+
+        const atual =
+          await service.detalhes(
+            req.params.id,
+            empresaId
+          );
+
+        if (
+          atual?.logo &&
+          atual.logo.includes(
+            "cloudinary"
+          )
+        ) {
+
+          const publicId =
+            getPublicId(
+              atual.logo
+            );
+
+          if (publicId) {
+
+            console.log(
+              "☁️ REMOVENDO LOGO:",
+              publicId
+            );
+
+            await cloudinary
+              .uploader
+              .destroy(
+                publicId
+              );
+          }
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Erro removendo logo antiga:",
+          err
+        );
+      }
+
+      const upload =
+        await cloudinary
+          .uploader
+          .upload(
+            req.file.path,
+            {
+              folder:
+                "mfscars/logos"
+            }
+          );
+
       dados.logo =
-        `/uploads/logos/${req.file.filename}`
+        upload.secure_url;
+
+      try {
+
+        fs.unlinkSync(
+          req.file.path
+        );
+
+      } catch {}
     }
 
     const data =
@@ -145,14 +273,18 @@ exports.atualizar = async (req, res) => {
         req.params.id,
         empresaId,
         dados
-      )
+      );
 
-    res.json(data)
+    res.json(data);
 
   } catch (e) {
-    tratarErro(res, e)
+
+    tratarErro(res, e);
+
   }
-}
+};
+
+
 /* ===============================
    EXCLUIR
 ================================ */

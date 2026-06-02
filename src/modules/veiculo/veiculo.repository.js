@@ -1059,6 +1059,8 @@ exports.buscarPublicoPorId = async (id) => {
 
   const v = r.rows[0];
 
+  console.log("ROW PUBLICO:", r.rows[0]);
+
   if (!v) return null;
 
   return {

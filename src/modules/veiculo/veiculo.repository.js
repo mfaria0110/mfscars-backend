@@ -1036,6 +1036,8 @@ exports.buscarPublicoPorId = async (id) => {
       v.ano_modelo as ano,
 
       l.nome as loja,
+      l.telefone,
+      l.logo as loja_logo,
       l.cidade,
       l.estado,
 

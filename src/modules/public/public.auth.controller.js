@@ -260,6 +260,62 @@ exports.cadastro = async (
     const loja_id =
       lojaRes.rows[0].id
 
+
+    /* ===============================
+    CLÁUSULAS PADRÃO
+    ============================== */
+
+    const templateRes =
+      await client.query(`
+        SELECT
+          clausulas,
+          garantia,
+          transferencia
+        FROM loja_clausula
+        WHERE padrao = true
+          AND ativo = true
+        ORDER BY id
+        LIMIT 1
+      `)
+
+    if (!templateRes.rows.length) {
+
+      throw new Error(
+        "Template padrão de cláusulas não encontrado"
+      )
+    }
+
+    const template =
+      templateRes.rows[0]
+
+    await client.query(`
+      INSERT INTO loja_clausula (
+        empresa_id,
+        loja_id,
+        clausulas,
+        garantia,
+        transferencia,
+        padrao,
+        ativo
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        false,
+        true
+      )
+    `, [
+      empresa_id,
+      loja_id,
+      template.clausulas,
+      template.garantia,
+      template.transferencia
+    ])
+
+
     /* ===============================
        PLANO FREE
     ============================== */
